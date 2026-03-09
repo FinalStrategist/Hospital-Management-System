@@ -1,0 +1,51 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<h1>Make Payment</h1>
+
+<div style="max-width: 500px; margin: 0 auto;">
+    <div style="border: 2px solid white; padding: 20px; margin-bottom: 20px;">
+        <h2>Invoice Summary</h2>
+        <p><strong>Invoice #:</strong> {{ invoice.invoice_number }}</p>
+        <p><strong>Patient:</strong> {{ invoice.patient.user_profile.user.get_full_name }}</p>
+        <p><strong>Total Amount:</strong> KES {{ invoice.total_amount|floatformat:2 }}</p>
+        <p><strong>Amount Paid:</strong> KES {{ invoice.amount_paid|floatformat:2 }}</p>
+        <p><strong>Balance Due:</strong> <span style="color: #ff4444;">KES {{ invoice.balance|floatformat:2 }}</span></p>
+    </div>
+    
+    <div style="border: 2px solid white; padding: 20px;">
+        <h2>M-Pesa Payment</h2>
+        <p>Enter your M-Pesa phone number to receive an STK push prompt.</p>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label for="phone_number">M-Pesa Phone Number:</label>
+                <input type="text" 
+                       name="phone_number" 
+                       id="phone_number" 
+                       class="form-control" 
+                       placeholder="e.g., 0712345678 or 254712345678"
+                       required>
+                <small style="color: #888;">Enter the phone number registered with M-Pesa</small>
+            </div>
+            
+            <div style="margin-top: 30px; text-align: center;">
+                <button type="submit" class="btn" style="padding: 15px 30px;">💳 Pay KES {{ invoice.balance|floatformat:2 }}</button>
+                <a href="{% url 'invoice_detail' invoice.id %}" class="btn" style="padding: 15px 30px;">Cancel</a>
+            </div>
+        </form>
+        
+        <div style="margin-top: 20px; padding: 15px; border: 1px solid #333;">
+            <h4>Instructions:</h4>
+            <ol style="margin-left: 20px;">
+                <li>Enter your M-Pesa registered phone number</li>
+                <li>Click "Pay" to receive an STK push on your phone</li>
+                <li>Enter your M-Pesa PIN to complete the transaction</li>
+                <li>You will be redirected to the payment status page</li>
+            </ol>
+        </div>
+    </div>
+</div>
+{% endblock %}

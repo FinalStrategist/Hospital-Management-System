@@ -1,0 +1,237 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<h1>Write New Prescription</h1>
+
+<form method="post" id="prescriptionForm">
+    {% csrf_token %}
+    
+    <!-- Patient Selection -->
+    <div style="border: 2px solid white; padding: 20px; margin-bottom: 20px;">
+        <h3>Patient Information</h3>
+        <div class="form-group">
+            <label for="patient_select">Select Patient:</label>
+            <select name="patient" id="patient_select" class="form-control" required>
+                <option value="">-- Select a Patient --</option>
+                {% for patient in patients %}
+                <option value="{{ patient.id }}" {% if selected_patient and selected_patient.id == patient.id %}selected{% endif %}>
+                    {{ patient.user_profile.user.get_full_name }} (ID: {{ patient.patient_id }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    
+    <!-- Prescription Details -->
+    <div style="border: 2px solid white; padding: 20px; margin-bottom: 20px;">
+        <h3>Prescription Details</h3>
+        
+        <div class="form-group">
+            <label for="{{ prescription_form.diagnosis.id_for_label }}">Diagnosis/Reason:</label>
+            {{ prescription_form.diagnosis }}
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ prescription_form.notes.id_for_label }}">Additional Notes:</label>
+            {{ prescription_form.notes }}
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="form-group">
+                <label for="{{ prescription_form.valid_until.id_for_label }}">Valid Until:</label>
+                {{ prescription_form.valid_until }}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ prescription_form.refills_allowed.id_for_label }}">Refills Allowed:</label>
+                {{ prescription_form.refills_allowed }}
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ prescription_form.is_emergency.id_for_label }}">
+                {{ prescription_form.is_emergency }} Emergency Prescription
+            </label>
+        </div>
+    </div>
+    
+    <!-- Medication Items -->
+    <div style="border: 2px solid white; padding: 20px; margin-bottom: 20px;">
+        <h3>Medications</h3>
+        
+        {{ formset.management_form }}
+        
+        <div id="medication-forms">
+            {% for form in formset %}
+            <div class="medication-form" style="border: 1px solid #333; padding: 15px; margin-bottom: 15px;">
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px;">
+                    <div class="form-group">
+                        <label>Medication:</label>
+                        {{ form.medication }}
+                    </div>
+                    <div class="form-group">
+                        <label>Or New Medication:</label>
+                        {{ form.medication_name }}
+                    </div>
+                    <div class="form-group">
+                        <label>Dosage:</label>
+                        {{ form.dosage }}
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 10px;">
+                    <div class="form-group">
+                        <label>Form:</label>
+                        {{ form.dosage_form }}
+                    </div>
+                    <div class="form-group">
+                        <label>Frequency:</label>
+                        {{ form.frequency }}
+                    </div>
+                    <div class="form-group custom-frequency" style="display: none;">
+                        <label>Custom Frequency:</label>
+                        {{ form.custom_frequency }}
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-top: 10px;">
+                    <div class="form-group">
+                        <label>Duration:</label>
+                        {{ form.duration }}
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity:</label>
+                        {{ form.quantity }}
+                    </div>
+                    <div class="form-group">
+                        <label>Refills:</label>
+                        {{ form.refills }}
+                    </div>
+                    <div class="form-group">
+                        <label>Route:</label>
+                        {{ form.route }}
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-top: 10px;">
+                    <label>Instructions:</label>
+                    {{ form.instructions }}
+                </div>
+                
+                {% if formset.can_delete %}
+                <div style="margin-top: 10px; text-align: right;">
+                    <label>
+                        {{ form.DELETE }} Remove this medication
+                    </label>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        
+        <button type="button" id="add-medication" class="btn" style="margin-top: 10px;">+ Add Another Medication</button>
+    </div>
+    
+    <div style="text-align: center;">
+        <button type="submit" class="btn" style="padding: 15px 40px;">Create Prescription</button>
+        <a href="{% url 'doctor_prescriptions' %}" class="btn" style="padding: 15px 40px;">Cancel</a>
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle frequency change to show/hide custom frequency
+    document.querySelectorAll('select[name$="-frequency"]').forEach(function(select) {
+        select.addEventListener('change', function() {
+            const form = this.closest('.medication-form');
+            const customField = form.querySelector('.custom-frequency');
+            if (this.value === 'OTHER') {
+                customField.style.display = 'block';
+            } else {
+                customField.style.display = 'none';
+            }
+        });
+    });
+    
+    // Handle medication selection
+    document.querySelectorAll('select[name$="-medication"]').forEach(function(select) {
+        select.addEventListener('change', function() {
+            const form = this.closest('.medication-form');
+            const medicationNameField = form.querySelector('input[name$="-medication_name"]');
+            if (this.value) {
+                // If medication selected from list, disable custom name field
+                medicationNameField.disabled = true;
+                medicationNameField.required = false;
+            } else {
+                medicationNameField.disabled = false;
+                medicationNameField.required = true;
+            }
+        });
+    });
+    
+    // Add new medication form
+    let formCount = {{ formset.total_form_count }};
+    document.getElementById('add-medication').addEventListener('click', function() {
+        const forms = document.getElementById('medication-forms');
+        const newForm = forms.children[0].cloneNode(true);
+        
+        // Update form indexes
+        const formRegex = RegExp(`form-(\\d+)-`, 'g');
+        newForm.innerHTML = newForm.innerHTML.replace(formRegex, `form-${formCount}-`);
+        
+        // Clear input values
+        newForm.querySelectorAll('input, select, textarea').forEach(function(input) {
+            if (input.type !== 'hidden' && !input.name.includes('DELETE')) {
+                input.value = '';
+            }
+            if (input.name.includes('DELETE')) {
+                input.checked = false;
+            }
+        });
+        
+        forms.appendChild(newForm);
+        
+        // Update management form
+        document.getElementById('id_items-TOTAL_FORMS').value = formCount + 1;
+        formCount++;
+        
+        // Reattach event listeners
+        attachEventListeners();
+    });
+    
+    function attachEventListeners() {
+        document.querySelectorAll('select[name$="-frequency"]').forEach(function(select) {
+            select.removeEventListener('change', frequencyChangeHandler);
+            select.addEventListener('change', frequencyChangeHandler);
+        });
+        
+        document.querySelectorAll('select[name$="-medication"]').forEach(function(select) {
+            select.removeEventListener('change', medicationChangeHandler);
+            select.addEventListener('change', medicationChangeHandler);
+        });
+    }
+    
+    function frequencyChangeHandler(e) {
+        const form = e.target.closest('.medication-form');
+        const customField = form.querySelector('.custom-frequency');
+        if (e.target.value === 'OTHER') {
+            customField.style.display = 'block';
+        } else {
+            customField.style.display = 'none';
+        }
+    }
+    
+    function medicationChangeHandler(e) {
+        const form = e.target.closest('.medication-form');
+        const medicationNameField = form.querySelector('input[name$="-medication_name"]');
+        if (e.target.value) {
+            medicationNameField.disabled = true;
+            medicationNameField.required = false;
+        } else {
+            medicationNameField.disabled = false;
+            medicationNameField.required = true;
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<h1>Patient List</h1>
+
+<a href="{% url 'patient_create' %}" class="btn">Create New Patient</a>
+<a href="{% url 'dashboard' %}" class="btn" style="margin-left: 10px;">Back to Dashboard</a>
+
+{% if patients %}
+<table>
+    <thead>
+        <tr>
+            <th>Patient ID</th>
+            <th>Username</th>
+            <th>Full Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Emergency Contact</th>
+            <th>Blood Group</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for patient in patients %}
+        <tr>
+            <td>{{ patient.patient_id }}</td>
+            <td>{{ patient.user_profile.user.username }}</td>
+            <td>{{ patient.user_profile.user.get_full_name }}</td>
+            <td>{{ patient.user_profile.user.email }}</td>
+            <td>{{ patient.user_profile.phone_number }}</td>
+            <td>{{ patient.emergency_contact }}</td>
+            <td>{{ patient.blood_group|default:"-" }}</td>
+            <td>
+                <a href="{% url 'patient_update' patient.pk %}" class="btn">Edit</a>
+                <a href="{% url 'patient_delete' patient.pk %}" class="btn btn-danger">Delete</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p style="margin-top: 20px;">No patients found.</p>
+{% endif %}
+{% endblock %}

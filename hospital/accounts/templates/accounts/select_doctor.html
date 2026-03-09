@@ -1,0 +1,37 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto;">
+    <h1>Select Doctor</h1>
+    <p>Choose a doctor to manage their schedule</p>
+    
+    <div style="margin-top: 30px;">
+        {% if doctors %}
+            <div style="display: grid; gap: 15px;">
+                {% for doctor in doctors %}
+                <a href="{% url 'manage_schedule' %}?doctor={{ doctor.id }}" 
+                   style="display: block; padding: 20px; border: 2px solid white; text-decoration: none; color: white; transition: all 0.3s;"
+                   onmouseover="this.style.backgroundColor='#333'"
+                   onmouseout="this.style.backgroundColor='transparent'">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h3 style="margin: 0;">Dr. {{ doctor.user_profile.user.get_full_name }}</h3>
+                            <p style="margin: 5px 0 0; color: #888;">{{ doctor.specialization }}</p>
+                        </div>
+                        <div>
+                            <small>Employee ID: {{ doctor.employee_id }}</small>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p style="text-align: center; padding: 50px;">No doctors found in the system.</p>
+        {% endif %}
+    </div>
+    
+    <div style="margin-top: 30px; text-align: center;">
+        <a href="{% url 'dashboard' %}" class="btn">Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

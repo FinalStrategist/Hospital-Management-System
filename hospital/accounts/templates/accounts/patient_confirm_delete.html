@@ -1,0 +1,14 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<h1>Delete Patient</h1>
+
+<p>Are you sure you want to delete patient "{{ patient.user_profile.user.get_full_name }}" ({{ patient.patient_id }})?</p>
+<p style="color: #ff4444; margin: 20px 0;">This action cannot be undone!</p>
+
+<form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Confirm Delete</button>
+    <a href="{% url 'patient_list' %}" class="btn">Cancel</a>
+</form>
+{% endblock %}

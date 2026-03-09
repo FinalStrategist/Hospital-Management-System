@@ -1,0 +1,151 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<h1>Manage Schedule - Dr. {{ doctor.user_profile.user.get_full_name }}</h1>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+    <!-- Add Schedule Form -->
+    <div style="border: 2px solid white; padding: 20px;">
+        <h2>Add Working Hours</h2>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="schedule">
+            
+            <div class="form-group">
+                <label for="{{ schedule_form.day_of_week.id_for_label }}">Day of Week:</label>
+                {{ schedule_form.day_of_week }}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ schedule_form.start_time.id_for_label }}">Start Time:</label>
+                {{ schedule_form.start_time }}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ schedule_form.end_time.id_for_label }}">End Time:</label>
+                {{ schedule_form.end_time }}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ schedule_form.slot_duration.id_for_label }}">Slot Duration (minutes):</label>
+                {{ schedule_form.slot_duration }}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ schedule_form.is_available.id_for_label }}">
+                    {{ schedule_form.is_available }} Available for appointments
+                </label>
+            </div>
+            
+            <button type="submit" class="btn">Add Schedule</button>
+        </form>
+    </div>
+    
+    <!-- Request Time Off Form -->
+    <div style="border: 2px solid white; padding: 20px;">
+        <h2>Request Time Off</h2>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="timeoff">
+            
+            <div class="form-group">
+                <label for="{{ timeoff_form.start_date.id_for_label }}">Start Date:</label>
+                {{ timeoff_form.start_date }}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ timeoff_form.end_date.id_for_label }}">End Date:</label>
+                {{ timeoff_form.end_date }}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ timeoff_form.reason.id_for_label }}">Reason:</label>
+                {{ timeoff_form.reason }}
+            </div>
+            
+            <button type="submit" class="btn">Request Time Off</button>
+        </form>
+    </div>
+</div>
+
+<!-- Current Schedule -->
+<div style="margin-top: 30px; border: 2px solid white; padding: 20px;">
+    <h2>Current Schedule</h2>
+    {% if schedules %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Day</th>
+                    <th>Hours</th>
+                    <th>Slot Duration</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for schedule in schedules %}
+                <tr>
+                    <td>{{ schedule.get_day_of_week_display }}</td>
+                    <td>{{ schedule.start_time|time:"g:i A" }} - {{ schedule.end_time|time:"g:i A" }}</td>
+                    <td>{{ schedule.slot_duration }} minutes</td>
+                    <td>
+                        {% if schedule.is_available %}
+                            <span style="color: #00C851;">Available</span>
+                        {% else %}
+                            <span style="color: #ff4444;">Unavailable</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="post" action="{% url 'delete_schedule' schedule.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No schedule set up yet.</p>
+    {% endif %}
+</div>
+
+<!-- Time Off Requests -->
+<div style="margin-top: 30px; border: 2px solid white; padding: 20px;">
+    <h2>Time Off Requests</h2>
+    {% if time_offs %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for timeoff in time_offs %}
+                <tr>
+                    <td>{{ timeoff.start_date }}</td>
+                    <td>{{ timeoff.end_date }}</td>
+                    <td>{{ timeoff.reason }}</td>
+                    <td>
+                        {% if timeoff.is_approved %}
+                            <span style="color: #00C851;">Approved</span>
+                        {% else %}
+                            <span style="color: #FFA500;">Pending</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No time off requests.</p>
+    {% endif %}
+</div>
+
+<div style="margin-top: 20px;">
+    <a href="{% url 'dashboard' %}" class="btn">Back to Dashboard</a>
+</div>
+{% endblock %}

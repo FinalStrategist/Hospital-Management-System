@@ -1,0 +1,101 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<h1>{{ action }} Patient</h1>
+
+<form method="post">
+    {% csrf_token %}
+    
+    {% if patient %}
+        <!-- Update form - pre-filled with existing data -->
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" name="username" id="username" value="{{ patient.user_profile.user.username }}" required readonly>
+        </div>
+        
+        <div class="form-group">
+            <label for="first_name">First Name</label>
+            <input type="text" name="first_name" id="first_name" value="{{ patient.user_profile.user.first_name }}" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="last_name">Last Name</label>
+            <input type="text" name="last_name" id="last_name" value="{{ patient.user_profile.user.last_name }}" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" name="email" id="email" value="{{ patient.user_profile.user.email }}" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="phone_number">Phone Number</label>
+            <input type="text" name="phone_number" id="phone_number" value="{{ patient.user_profile.phone_number }}">
+        </div>
+        
+        <div class="form-group">
+            <label for="address">Address</label>
+            <textarea name="address" id="address" rows="3">{{ patient.user_profile.address }}</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="emergency_contact">Emergency Contact</label>
+            <input type="text" name="emergency_contact" id="emergency_contact" value="{{ patient.emergency_contact }}" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="blood_group">Blood Group</label>
+            <input type="text" name="blood_group" id="blood_group" value="{{ patient.blood_group }}" placeholder="e.g., A+, B-, O+">
+        </div>
+    {% else %}
+        <!-- Create form - empty -->
+        <div class="form-group">
+            <label for="username">Username*</label>
+            <input type="text" name="username" id="username" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="first_name">First Name*</label>
+            <input type="text" name="first_name" id="first_name" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="last_name">Last Name*</label>
+            <input type="text" name="last_name" id="last_name" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="email">Email*</label>
+            <input type="email" name="email" id="email" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password (leave blank for default 'defaultpass123')</label>
+            <input type="password" name="password" id="password">
+        </div>
+        
+        <div class="form-group">
+            <label for="phone_number">Phone Number</label>
+            <input type="text" name="phone_number" id="phone_number">
+        </div>
+        
+        <div class="form-group">
+            <label for="address">Address</label>
+            <textarea name="address" id="address" rows="3"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="emergency_contact">Emergency Contact*</label>
+            <input type="text" name="emergency_contact" id="emergency_contact" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="blood_group">Blood Group</label>
+            <input type="text" name="blood_group" id="blood_group" placeholder="e.g., A+, B-, O+">
+        </div>
+    {% endif %}
+    
+    <button type="submit" class="btn">{{ action }} Patient</button>
+    <a href="{% url 'patient_list' %}" class="btn" style="margin-left: 10px;">Cancel</a>
+</form>
+{% endblock %}

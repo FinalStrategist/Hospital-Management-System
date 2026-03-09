@@ -1,0 +1,101 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<h1>My Prescriptions</h1>
+<p>Welcome Dr. {{ user.get_full_name }}</p>
+
+<!-- Filter Section -->
+<div style="margin-bottom: 30px; border: 2px solid white; padding: 20px;">
+    <h3>Filter Prescriptions</h3>
+    <form method="get" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+        <div class="form-group">
+            <label for="status">Status:</label>
+            <select name="status" id="status" class="form-control">
+                <option value="all" {% if filters.status == 'all' %}selected{% endif %}>All</option>
+                <option value="active" {% if filters.status == 'active' %}selected{% endif %}>Active</option>
+                <option value="completed" {% if filters.status == 'completed' %}selected{% endif %}>Completed</option>
+                <option value="discontinued" {% if filters.status == 'discontinued' %}selected{% endif %}>Discontinued</option>
+                <option value="expired" {% if filters.status == 'expired' %}selected{% endif %}>Expired</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="patient">Patient:</label>
+            <select name="patient" id="patient" class="form-control">
+                <option value="">All Patients</option>
+                {% for patient in patients %}
+                <option value="{{ patient.id }}" {% if filters.patient == patient.id|stringformat:"i" %}selected{% endif %}>
+                    {{ patient.user_profile.user.get_full_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="date_from">From Date:</label>
+            <input type="date" name="date_from" id="date_from" class="form-control" value="{{ filters.date_from }}">
+        </div>
+        
+        <div class="form-group">
+            <label for="date_to">To Date:</label>
+            <input type="date" name="date_to" id="date_to" class="form-control" value="{{ filters.date_to }}">
+        </div>
+        
+        <div style="display: flex; align-items: flex-end;">
+            <button type="submit" class="btn">Apply Filters</button>
+            <a href="{% url 'doctor_prescriptions' %}" class="btn" style="margin-left: 10px;">Clear</a>
+        </div>
+    </form>
+</div>
+
+<!-- Quick Actions -->
+<div style="margin-bottom: 20px;">
+    <a href="{% url 'create_prescription' %}" class="btn">+ Write New Prescription</a>
+    <a href="{% url 'medication_list' %}" class="btn">📋 Medication Library</a>
+</div>
+
+<!-- Prescriptions List -->
+{% if prescriptions %}
+    <table>
+        <thead>
+            <tr>
+                <th>Prescription ID</th>
+                <th>Date</th>
+                <th>Patient</th>
+                <th>Diagnosis</th>
+                <th>Items</th>
+                <th>Status</th>
+                <th>Valid Until</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for prescription in prescriptions %}
+            <tr>
+                <td><strong>{{ prescription.prescription_id }}</strong></td>
+                <td>{{ prescription.created_at|date:"M j, Y" }}</td>
+                <td>{{ prescription.patient.user_profile.user.get_full_name }}</td>
+                <td>{{ prescription.diagnosis|truncatechars:30 }}</td>
+                <td>{{ prescription.items.count }} item(s)</td>
+                <td>
+                    <span style="color: 
+                        {% if prescription.status == 'active' %}#00C851
+                        {% elif prescription.status == 'completed' %}#33b5e5
+                        {% elif prescription.status == 'discontinued' %}#ff4444
+                        {% elif prescription.status == 'expired' %}#aa66cc
+                        {% endif %};">
+                        {{ prescription.get_status_display }}
+                    </span>
+                </td>
+                <td>{{ prescription.valid_until|default:"—" }}</td>
+                <td>
+                    <a href="{% url 'prescription_detail' prescription.id %}" class="btn" style="padding: 5px 10px;">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p style="text-align: center; padding: 50px;">No prescriptions found.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,43 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<h1>Available Doctors</h1>
+
+<div style="margin-bottom: 30px;">
+    <form method="get" class="form-group" style="display: flex; gap: 10px;">
+        <input type="text" name="specialization" placeholder="Filter by specialization..." 
+               value="{{ request.GET.specialization }}" style="flex: 1; padding: 10px; background: black; color: white; border: 2px solid white;">
+        <button type="submit" class="btn">Filter</button>
+        {% if request.GET.specialization %}
+            <a href="{% url 'available_doctors' %}" class="btn">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="dashboard-cards">
+    {% for item in doctor_availability %}
+    <div class="card" style="text-align: left;">
+        <h3>Dr. {{ item.doctor.user_profile.user.get_full_name }}</h3>
+        <p><strong>Specialization:</strong> {{ item.doctor.specialization }}</p>
+        <p><strong>Employee ID:</strong> {{ item.doctor.employee_id }}</p>
+        
+        <div style="margin: 15px 0;">
+            {% if item.available_today %}
+                <span style="color: #00C851;">✓ Available Today</span>
+                {% if item.schedule %}
+                    <p style="margin-top: 5px; font-size: 0.9em;">
+                        Today's hours: {{ item.schedule.start_time|time:"g:i A" }} - {{ item.schedule.end_time|time:"g:i A" }}
+                    </p>
+                {% endif %}
+            {% else %}
+                <span style="color: #ff4444;">✗ Not Available Today</span>
+            {% endif %}
+        </div>
+        
+        <a href="{% url 'book_appointment' %}?doctor={{ item.doctor.id }}" class="btn" style="width: 100%; text-align: center;">Book Appointment</a>
+    </div>
+    {% empty %}
+    <p>No doctors available.</p>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<h1>My Prescriptions</h1>
+<p>Welcome, {{ user.get_full_name }}</p>
+
+<!-- Filter -->
+<div style="margin-bottom: 20px;">
+    <a href="?status=all" class="btn {% if status_filter == 'all' %}active{% endif %}">All</a>
+    <a href="?status=active" class="btn {% if status_filter == 'active' %}active{% endif %}">Active</a>
+</div>
+
+<!-- Active Prescriptions -->
+<div style="border: 2px solid #00C851; padding: 20px; margin-bottom: 30px;">
+    <h2 style="color: #00C851;">Active Prescriptions</h2>
+    
+    {% if active_prescriptions %}
+        {% for prescription in active_prescriptions %}
+        <div style="border: 1px solid #333; padding: 15px; margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div>
+                    <h3>Prescription #{{ prescription.prescription_id }}</h3>
+                    <p><strong>Doctor:</strong> Dr. {{ prescription.doctor.user_profile.user.get_full_name }}</p>
+                    <p><strong>Date:</strong> {{ prescription.created_at|date:"F j, Y" }}</p>
+                    <p><strong>Diagnosis:</strong> {{ prescription.diagnosis|truncatechars:50 }}</p>
+                </div>
+                <div>
+                    <span style="color: #00C851;">● Active</span>
+                </div>
+            </div>
+            
+            <h4 style="margin-top: 15px;">Medications:</h4>
+            <ul>
+                {% for item in prescription.items.all %}
+                <li>
+                    <strong>
+                        {% if item.medication %}
+                            {{ item.medication.name }}
+                        {% else %}
+                            {{ item.medication_name }}
+                        {% endif %}
+                    </strong> - {{ item.dosage }} - {{ item.get_frequency_display }} for {{ item.duration }}
+                </li>
+                {% endfor %}
+            </ul>
+            
+            <div style="margin-top: 15px;">
+                <a href="{% url 'prescription_detail' prescription.id %}" class="btn">View Details</a>
+                {% if prescription.refills_used < prescription.refills_allowed %}
+                    <span style="margin-left: 15px; color: #00C851;">{{ prescription.remaining_refills }} refill(s) remaining</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No active prescriptions.</p>
+    {% endif %}
+</div>
+
+<!-- Past Prescriptions -->
+<div style="border: 2px solid #888; padding: 20px;">
+    <h2 style="color: #888;">Past Prescriptions</h2>
+    
+    {% if past_prescriptions %}
+        {% for prescription in past_prescriptions %}
+        <div style="border: 1px solid #333; padding: 15px; margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div>
+                    <h3>Prescription #{{ prescription.prescription_id }}</h3>
+                    <p><strong>Doctor:</strong> Dr. {{ prescription.doctor.user_profile.user.get_full_name }}</p>
+                    <p><strong>Date:</strong> {{ prescription.created_at|date:"F j, Y" }}</p>
+                    <p><strong>Status:</strong> {{ prescription.get_status_display }}</p>
+                </div>
+            </div>
+            
+            <div style="margin-top: 10px;">
+                <a href="{% url 'prescription_detail' prescription.id %}" class="btn">View Details</a>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No past prescriptions.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,298 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<div class="register-container">
+    <h1>Create Account</h1>
+    
+    <form method="post" class="register-form">
+        {% csrf_token %}
+        
+        {% for field in form %}
+        <div class="form-group floating-label-group">
+            {{ field }}
+            <label for="{{ field.id_for_label }}" class="floating-label">
+                {% if field.name == 'first_name' %}
+                    First Name
+                {% elif field.name == 'last_name' %}
+                    Last Name
+                {% elif field.name == 'username' %}
+                    Username
+                {% elif field.name == 'email' %}
+                    Email Address
+                {% elif field.name == 'password1' %}
+                    Password
+                {% elif field.name == 'password2' %}
+                    Confirm Password
+                {% elif field.name == 'user_type' %}
+                    Account Type
+                {% elif field.name == 'phone_number' %}
+                    Phone Number
+                {% elif field.name == 'address' %}
+                    Address
+                {% else %}
+                    {{ field.label }}
+                {% endif %}
+            </label>
+            {% if field.errors %}
+                <small class="error-message">{{ field.errors.0 }}</small>
+            {% endif %}
+        </div>
+        {% endfor %}
+        
+        <button type="submit" class="btn btn-register">Register</button>
+    </form>
+    
+    <p class="login-link">
+        Already have an account? <a href="{% url 'login' %}">Login here</a>
+    </p>
+</div>
+
+<style>
+    .register-container {
+        max-width: 500px;
+        margin: 30px auto;
+        padding: 40px;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 20px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    h1 {
+        text-align: center;
+        margin-bottom: 30px;
+        font-weight: 400;
+        font-size: 2rem;
+        color: #fff;
+        letter-spacing: -0.5px;
+    }
+
+    .register-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .form-group {
+        position: relative;
+        margin-bottom: 5px;
+    }
+
+    .floating-label-group {
+        position: relative;
+    }
+
+    .floating-label-group input,
+    .floating-label-group select,
+    .floating-label-group textarea {
+        width: 100%;
+        height: 60px;
+        padding: 20px 15px 5px 15px;
+        font-size: 16px;
+        color: #fff;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        outline: none;
+        transition: all 0.3s ease;
+        font-family: inherit;
+    }
+
+    .floating-label-group textarea {
+        height: 80px;
+        padding-top: 25px;
+        resize: vertical;
+    }
+
+    .floating-label-group select {
+        appearance: none;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    .floating-label-group select option {
+        background: #1a1a1a;
+        color: #fff;
+    }
+
+    .floating-label-group input:focus,
+    .floating-label-group select:focus,
+    .floating-label-group textarea:focus {
+        border-color: rgba(255, 255, 255, 0.5);
+        box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+    }
+
+    .floating-label-group label {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 16px;
+        color: rgba(255, 255, 255, 0.5);
+        pointer-events: none;
+        transition: all 0.3s ease;
+        background: transparent;
+        padding: 0 5px;
+        line-height: 1;
+    }
+
+    /* Special handling for textarea label */
+    .floating-label-group textarea ~ label {
+        top: 25px;
+    }
+
+    /* Floating label effect */
+    .floating-label-group input:focus ~ label,
+    .floating-label-group input:not(:placeholder-shown) ~ label,
+    .floating-label-group select:focus ~ label,
+    .floating-label-group select:not([value=""]):valid ~ label,
+    .floating-label-group textarea:focus ~ label,
+    .floating-label-group textarea:not(:placeholder-shown) ~ label {
+        top: 15px;
+        transform: translateY(0);
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.7);
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    /* Error message styling */
+    .error-message {
+        display: block;
+        margin-top: 5px;
+        margin-left: 15px;
+        font-size: 12px;
+        color: rgba(255, 100, 100, 0.8);
+        letter-spacing: 0.3px;
+    }
+
+    .btn-register {
+        width: 100%;
+        height: 50px;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 400;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 10px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        backdrop-filter: blur(5px);
+    }
+
+    .btn-register:hover {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.4);
+        transform: translateY(-1px);
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-register:active {
+        transform: translateY(0);
+    }
+
+    .login-link {
+        text-align: center;
+        margin-top: 25px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 14px;
+    }
+
+    .login-link a {
+        color: rgba(255, 255, 255, 0.9);
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        border-bottom: 1px solid transparent;
+    }
+
+    .login-link a:hover {
+        border-bottom-color: rgba(255, 255, 255, 0.5);
+        color: #fff;
+    }
+
+    /* Glowing edge effect on container focus */
+    .register-container:focus-within {
+        box-shadow: 0 0 30px rgba(255, 255, 255, 0.15),
+                    0 8px 32px rgba(0, 0, 0, 0.2);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Custom scrollbar for textarea */
+    .floating-label-group textarea::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .floating-label-group textarea::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+    }
+
+    .floating-label-group textarea::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+    }
+
+    .floating-label-group textarea::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Placeholder styling */
+    .floating-label-group input::placeholder,
+    .floating-label-group textarea::placeholder {
+        color: transparent;
+    }
+
+    /* Select dropdown arrow */
+    .floating-label-group select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.5)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 15px center;
+        background-size: 16px;
+        padding-right: 45px;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+        .register-container {
+            margin: 15px;
+            padding: 25px;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+        }
+    }
+</style>
+
+<script>
+    // This ensures the floating label works correctly with select fields
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectFields = document.querySelectorAll('select');
+        selectFields.forEach(select => {
+            // Add a placeholder attribute to make the :not(:placeholder-shown) work
+            select.setAttribute('placeholder', ' ');
+            
+            // Check initial state
+            if (select.value) {
+                select.style.borderColor = 'rgba(255, 255, 255, 0.5)';
+            }
+            
+            // Update on change
+            select.addEventListener('change', function() {
+                if (this.value) {
+                    this.style.borderColor = 'rgba(255, 255, 255, 0.5)';
+                } else {
+                    this.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

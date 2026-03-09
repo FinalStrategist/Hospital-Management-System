@@ -1,0 +1,210 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<h1>Doctor Dashboard</h1>
+<p>Welcome, Dr. {{ user.get_full_name|default:user.username }}</p>
+
+<!-- Status Alert -->
+{% if on_time_off %}
+<div style="border: 2px solid #ff4444; padding: 15px; margin-bottom: 20px; text-align: center;">
+    ⚕️ You are currently on approved time off. Your schedule is marked as unavailable.
+    <a href="{% url 'manage_schedule' %}" style="color: white; margin-left: 10px;">Manage Schedule →</a>
+</div>
+{% endif %}
+
+<!-- Statistics Cards -->
+<div class="dashboard-cards">
+    <div class="card">
+        <h3>Today's Patients</h3>
+        <div class="number">{{ today_appointments|length }}</div>
+        <small>{{ today|date:"F j, Y" }}</small>
+    </div>
+    <div class="card">
+        <h3>Upcoming</h3>
+        <div class="number">{{ upcoming_appointments|length }}</div>
+        <small>Future appointments</small>
+    </div>
+    <div class="card">
+        <h3>Patients Seen</h3>
+        <div class="number">{{ total_patients_seen }}</div>
+        <small>Total completed</small>
+    </div>
+    <div class="card">
+        <h3>Pending</h3>
+        <div class="number">{{ pending_appointments }}</div>
+        <small>To confirm</small>
+    </div>
+</div>
+
+<!-- Today's Schedule -->
+<div style="margin: 30px 0; border: 2px solid white; padding: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3>Today's Schedule ({{ today|date:"l, F j, Y" }})</h3>
+        {% if today_schedule %}
+            <span style="color: #00C851;">Working hours: {{ today_schedule.start_time|time:"g:i A" }} - {{ today_schedule.end_time|time:"g:i A" }}</span>
+        {% else %}
+            <span style="color: #ff4444;">No schedule set for today</span>
+        {% endif %}
+    </div>
+    
+    {% if today_appointments %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Patient</th>
+                    <th>Reason</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for apt in today_appointments %}
+                <tr>
+                    <td>{{ apt.start_time|time:"g:i A" }}</td>
+                    <td>
+                        <strong>{{ apt.patient.user_profile.user.get_full_name }}</strong><br>
+                        <small style="color: #888;">ID: {{ apt.patient.patient_id }}</small>
+                    </td>
+                    <td>{{ apt.reason|truncatechars:30|default:"—" }}</td>
+                    <td>
+                        <span style="color: 
+                            {% if apt.status == 'confirmed' %}#00C851
+                            {% elif apt.status == 'completed' %}#33b5e5
+                            {% elif apt.status == 'cancelled' %}#ff4444
+                            {% else %}#FFA500{% endif %};">
+                            {{ apt.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <form method="post" action="{% url 'update_appointment_status' apt.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <select name="status" onchange="this.form.submit()" style="padding: 5px; background: black; color: white; border: 1px solid white;">
+                                <option value="">Update</option>
+                                <option value="confirmed">✓ Confirm</option>
+                                <option value="completed">✔ Complete</option>
+                                <option value="no_show">✗ No Show</option>
+                                <option value="cancelled">✕ Cancel</option>
+                            </select>
+                        </form>
+                        <a href="#" class="btn" style="padding: 5px 10px; font-size: 0.9em;">Details</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p style="text-align: center; padding: 40px;">No appointments scheduled for today.</p>
+    {% endif %}
+</div>
+
+<!-- Two Column Layout -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+    <!-- Upcoming Appointments -->
+    <div style="border: 2px solid white; padding: 20px;">
+        <h3>Upcoming Appointments</h3>
+        {% if upcoming_appointments %}
+            <table style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Patient</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for apt in upcoming_appointments %}
+                    <tr>
+                        <td>{{ apt.appointment_date|date:"M j" }}</td>
+                        <td>{{ apt.start_time|time:"g:i A" }}</td>
+                        <td>{{ apt.patient.user_profile.user.last_name }}</td>
+                        <td>
+                            <span style="color: 
+                                {% if apt.status == 'confirmed' %}#00C851
+                                {% else %}#FFA500{% endif %};">
+                                {{ apt.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div style="margin-top: 15px;">
+                <a href="{% url 'doctor_appointments' %}" style="color: white;">View all appointments →</a>
+            </div>
+        {% else %}
+            <p>No upcoming appointments.</p>
+        {% endif %}
+    </div>
+    
+    <!-- Quick Actions & Info -->
+    <div style="border: 2px solid white; padding: 20px;">
+        <h3>Quick Actions</h3>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <a href="{% url 'manage_schedule' %}" class="btn" style="text-align: center;">📅 Manage My Schedule</a>
+            <a href="{% url 'doctor_appointments' %}" class="btn" style="text-align: center;">📋 View All My Appointments</a>
+            <a href="{% url 'doctor_prescriptions' %}" class="btn" style="text-align: center;">💊 Manage Prescriptions</a>
+            <a href="#" class="btn" style="text-align: center;">📊 View Statistics</a>
+        </div>
+        
+        <h3 style="margin-top: 30px;">Today's Stats</h3>
+        <ul style="list-style: none; padding: 0;">
+            <li>✅ Completed: {{ today_appointments|length }}</li>
+            <li>⏳ Pending: {{ pending_appointments }}</li>
+            <li>📊 Completion rate: {% if today_appointments %}100%{% else %}0%{% endif %}</li>
+        </ul>
+        
+        {% if today_schedule %}
+        <h3 style="margin-top: 20px;">Next Available Slot</h3>
+        <p>
+            {% if today_appointments %}
+                {% with last_appointment=today_appointments.last %}
+                    After {{ last_appointment.end_time|time:"g:i A" }}
+                {% endwith %}
+            {% else %}
+                {{ today_schedule.start_time|time:"g:i A" }}
+            {% endif %}
+        </p>
+        {% endif %}
+
+        <div style="margin-top: 30px; border: 2px solid white; padding: 20px;">
+            <h3>Revenue Summary</h3>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+                <div>
+                    <strong>Today's Collections:</strong><br>
+                    KES {{ today_revenue|floatformat:2|default:"0.00" }}
+                </div>
+                <div>
+                    <strong>This Week:</strong><br>
+                    KES {{ week_revenue|floatformat:2|default:"0.00" }}
+                </div>
+                <div>
+                    <strong>This Month:</strong><br>
+                    KES {{ month_revenue|floatformat:2|default:"0.00" }}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Patient History Quick Look (optional) -->
+<div style="margin-top: 30px; border: 2px solid white; padding: 20px;">
+    <h3>Recent Patients</h3>
+    {% with recent_patients=today_appointments|slice:":5" %}
+        {% if recent_patients %}
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                {% for apt in recent_patients %}
+                <div style="border: 1px solid white; padding: 10px; border-radius: 5px; min-width: 150px;">
+                    <strong>{{ apt.patient.user_profile.user.get_full_name }}</strong><br>
+                    <small>Age: {{ apt.patient.user_profile.date_of_birth|timesince|cut:","|cut:" years"|default:"—" }}</small><br>
+                    <small>Blood: {{ apt.patient.blood_group|default:"—" }}</small>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>No recent patients to display.</p>
+        {% endif %}
+    {% endwith %}
+</div>
+{% endblock %}

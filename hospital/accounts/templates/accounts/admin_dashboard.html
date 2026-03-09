@@ -1,0 +1,727 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Admin Dashboard</h1>
+    <p>Welcome back, {{ user.get_full_name|default:user.username }}</p>
+</div>
+
+<!-- Statistics Cards - All Clickable -->
+<div class="dashboard-cards">
+    <a href="{% url 'admin:auth_user_changelist' %}" class="card-link">
+        <div class="card">
+            <div class="card-icon">👥</div>
+            <h3>Total Users</h3>
+            <div class="number">{{ total_users|default:"0" }}</div>
+            <small>Registered users</small>
+            <div class="card-footer">View all users →</div>
+        </div>
+    </a>
+    
+    <a href="{% url 'admin:accounts_doctor_changelist' %}" class="card-link">
+        <div class="card">
+            <div class="card-icon">👨‍⚕️</div>
+            <h3>Doctors</h3>
+            <div class="number">{{ total_doctors|default:"0" }}</div>
+            <small>Active doctors</small>
+            <div class="card-footer">Manage doctors →</div>
+        </div>
+    </a>
+    
+    <a href="{% url 'admin:accounts_receptionist_changelist' %}" class="card-link">
+        <div class="card">
+            <div class="card-icon">💁</div>
+            <h3>Receptionists</h3>
+            <div class="number">{{ total_receptionists|default:"0" }}</div>
+            <small>Staff members</small>
+            <div class="card-footer">View staff →</div>
+        </div>
+    </a>
+    
+    <a href="{% url 'admin:accounts_patient_changelist' %}" class="card-link">
+        <div class="card">
+            <div class="card-icon">🧑</div>
+            <h3>Patients</h3>
+            <div class="number">{{ total_patients|default:"0" }}</div>
+            <small>Registered patients</small>
+            <div class="card-footer">View patients →</div>
+        </div>
+    </a>
+    
+    <a href="{% url 'all_appointments' %}" class="card-link">
+        <div class="card">
+            <div class="card-icon">📅</div>
+            <h3>Appointments</h3>
+            <div class="number">{{ total_appointments|default:"0" }}</div>
+            <small>Total bookings</small>
+            <div class="card-footer">View all →</div>
+        </div>
+    </a>
+    
+    <a href="{% url 'all_appointments' %}?date={{ today|date:'Y-m-d' }}" class="card-link">
+        <div class="card">
+            <div class="card-icon">⏰</div>
+            <h3>Today</h3>
+            <div class="number">{{ today_appointments|default:"0" }}</div>
+            <small>{{ today|date:"l, M j" }}</small>
+            <div class="card-footer">Today's schedule →</div>
+        </div>
+    </a>
+</div>
+
+<!-- Quick Actions -->
+<div class="quick-actions-section">
+    <h2>Quick Actions</h2>
+    <div class="quick-actions">
+        <a href="{% url 'admin:index' %}" class="action-card">
+            <div class="action-icon">⚙️</div>
+            <div class="action-text">Django Admin</div>
+            <small>Advanced settings</small>
+        </a>
+        <a href="{% url 'all_appointments' %}" class="action-card">
+            <div class="action-icon">📋</div>
+            <div class="action-text">All Appointments</div>
+            <small>Manage bookings</small>
+        </a>
+        <a href="{% url 'manage_schedule' %}" class="action-card">
+            <div class="action-icon">📅</div>
+            <div class="action-text">Manage Schedules</div>
+            <small>Doctor timetables</small>
+        </a>
+        <a href="{% url 'invoice_list' %}" class="action-card">
+            <div class="action-icon">💰</div>
+            <div class="action-text">Invoices</div>
+            <small>Billing & payments</small>
+        </a>
+        <a href="{% url 'medication_list' %}" class="action-card">
+            <div class="action-icon">💊</div>
+            <div class="action-text">Medications</div>
+            <small>Pharmacy inventory</small>
+        </a>
+        <a href="{% url 'create_invoice' %}" class="action-card">
+            <div class="action-icon">🧾</div>
+            <div class="action-text">New Invoice</div>
+            <small>Create invoice</small>
+        </a>
+    </div>
+</div>
+
+<!-- Main Content Grid -->
+<div class="dashboard-grid">
+    <!-- Recent Appointments -->
+    <div class="grid-card">
+        <div class="card-header">
+            <h3>Recent Appointments</h3>
+            <a href="{% url 'all_appointments' %}" class="view-all">View All →</a>
+        </div>
+        
+        {% if recent_appointments %}
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Patient</th>
+                        <th>Doctor</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for apt in recent_appointments %}
+                    <tr class="clickable-row" onclick="window.location='{% url 'all_appointments' %}?appointment={{ apt.id }}'">
+                        <td>#{{ apt.id }}</td>
+                        <td>{{ apt.patient.user_profile.user.get_full_name|truncatechars:20 }}</td>
+                        <td>Dr. {{ apt.doctor.user_profile.user.last_name }}</td>
+                        <td>{{ apt.appointment_date|date:"M j, Y" }}</td>
+                        <td>{{ apt.start_time|time:"g:i A" }}</td>
+                        <td>
+                            <span class="status-badge status-{{ apt.status }}">
+                                {{ apt.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{% url 'all_appointments' %}?appointment={{ apt.id }}" class="btn-small">View</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="empty-message">No recent appointments</p>
+        {% endif %}
+    </div>
+    
+    <!-- Recent Patients -->
+    <div class="grid-card">
+        <div class="card-header">
+            <h3>Recent Patients</h3>
+            <a href="{% url 'admin:accounts_patient_changelist' %}" class="view-all">View All →</a>
+        </div>
+        
+        {% if recent_patients %}
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Patient ID</th>
+                        <th>Name</th>
+                        <th>Blood Group</th>
+                        <th>Phone</th>
+                        <th>Joined</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for patient in recent_patients %}
+                    <tr>
+                        <td>{{ patient.patient_id }}</td>
+                        <td>{{ patient.user_profile.user.get_full_name }}</td>
+                        <td>{{ patient.blood_group|default:"—" }}</td>
+                        <td>{{ patient.user_profile.phone_number|default:"—" }}</td>
+                        <td>{{ patient.user_profile.user.date_joined|date:"M j, Y" }}</td>
+                        <td>
+                            <a href="{% url 'admin:accounts_patient_change' patient.id %}" class="btn-small">Edit</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="empty-message">No recent patients</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- System Overview -->
+<div class="system-overview">
+    <h2>System Overview</h2>
+    
+    <div class="stats-grid">
+        <!-- User Distribution -->
+        <div class="stat-card">
+            <h4>User Distribution</h4>
+            <div class="progress-bars">
+                <div class="progress-item">
+                    <span class="label">Doctors</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {% widthratio total_doctors total_users 100 %}%"></div>
+                    </div>
+                    <span class="value">{{ total_doctors }}</span>
+                </div>
+                <div class="progress-item">
+                    <span class="label">Receptionists</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {% widthratio total_receptionists total_users 100 %}%"></div>
+                    </div>
+                    <span class="value">{{ total_receptionists }}</span>
+                </div>
+                <div class="progress-item">
+                    <span class="label">Patients</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {% widthratio total_patients total_users 100 %}%"></div>
+                    </div>
+                    <span class="value">{{ total_patients }}</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Appointment Stats -->
+        <div class="stat-card">
+            <h4>Appointment Status</h4>
+            <div class="stats-list">
+                {% with total=total_appointments %}
+                    <div class="stat-row">
+                        <span class="label">Scheduled</span>
+                        <span class="value scheduled">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="label">Confirmed</span>
+                        <span class="value confirmed">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="label">Completed</span>
+                        <span class="value completed">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="label">Cancelled</span>
+                        <span class="value cancelled">0</span>
+                    </div>
+                {% endwith %}
+            </div>
+        </div>
+        
+        <!-- Pending Items -->
+        <div class="stat-card">
+            <h4>Pending Items</h4>
+            <div class="pending-items">
+                <div class="pending-item">
+                    <span>Time Off Requests</span>
+                    <span class="badge warning">{{ pending_timeoffs|default:"0" }}</span>
+                </div>
+                <div class="pending-item">
+                    <span>Unpaid Invoices</span>
+                    <span class="badge warning">0</span>
+                </div>
+                <div class="pending-item">
+                    <span>Pending Approvals</span>
+                    <span class="badge warning">0</span>
+                </div>
+            </div>
+            <div style="margin-top: 20px;">
+                <a href="{% url 'admin:accounts_timeoff_changelist' %}" class="btn-small">Manage Requests →</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Styles -->
+<style>
+    .dashboard-header {
+        margin-bottom: 30px;
+    }
+    
+    .dashboard-header h1 {
+        font-size: 28px;
+        margin-bottom: 5px;
+        color: #e5e7eb;
+    }
+    
+    .dashboard-header p {
+        color: #9ca3af;
+        font-size: 16px;
+    }
+    
+    /* Statistics Cards - Clickable */
+    .dashboard-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 20px;
+        margin-bottom: 40px;
+    }
+    
+    .card-link {
+        text-decoration: none;
+        display: block;
+    }
+    
+    .card {
+        background: #111417;
+        border: 1px solid #2a2f35;
+        border-radius: 16px;
+        padding: 20px;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        height: 100%;
+        cursor: pointer;
+    }
+    
+    .card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+        border-color: #3b82f6;
+        background: #1a1e24;
+    }
+    
+    .card-icon {
+        font-size: 24px;
+        margin-bottom: 15px;
+        opacity: 0.8;
+    }
+    
+    .card h3 {
+        font-size: 14px;
+        color: #9ca3af;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .card .number {
+        font-size: 32px;
+        font-weight: 700;
+        color: #e5e7eb;
+        line-height: 1.2;
+        margin-bottom: 5px;
+    }
+    
+    .card small {
+        color: #6b7280;
+        font-size: 12px;
+        display: block;
+        margin-bottom: 15px;
+    }
+    
+    .card-footer {
+        font-size: 12px;
+        color: #3b82f6;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover .card-footer {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    /* Quick Actions */
+    .quick-actions-section {
+        margin-bottom: 40px;
+    }
+    
+    .quick-actions-section h2 {
+        font-size: 20px;
+        margin-bottom: 20px;
+        color: #e5e7eb;
+    }
+    
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 15px;
+    }
+    
+    .action-card {
+        background: #111417;
+        border: 1px solid #2a2f35;
+        border-radius: 12px;
+        padding: 20px;
+        text-decoration: none;
+        color: #e5e7eb;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .action-card:hover {
+        background: #1a1e24;
+        border-color: #3b82f6;
+        transform: translateY(-2px);
+    }
+    
+    .action-icon {
+        font-size: 32px;
+        margin-bottom: 10px;
+    }
+    
+    .action-text {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+    
+    .action-card small {
+        color: #6b7280;
+        font-size: 11px;
+    }
+    
+    /* Dashboard Grid */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin-bottom: 40px;
+    }
+    
+    .grid-card {
+        background: #111417;
+        border: 1px solid #2a2f35;
+        border-radius: 16px;
+        padding: 20px;
+    }
+    
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .card-header h3 {
+        font-size: 18px;
+        color: #e5e7eb;
+        margin: 0;
+    }
+    
+    .view-all {
+        color: #3b82f6;
+        text-decoration: none;
+        font-size: 14px;
+        transition: color 0.2s;
+    }
+    
+    .view-all:hover {
+        color: #60a5fa;
+        text-decoration: underline;
+    }
+    
+    /* Tables */
+    .table-responsive {
+        overflow-x: auto;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    th {
+        text-align: left;
+        padding: 12px 8px;
+        color: #9ca3af;
+        font-weight: 500;
+        font-size: 13px;
+        border-bottom: 1px solid #2a2f35;
+    }
+    
+    td {
+        padding: 12px 8px;
+        color: #e5e7eb;
+        font-size: 14px;
+        border-bottom: 1px solid #1f2937;
+    }
+    
+    tr:last-child td {
+        border-bottom: none;
+    }
+    
+    tr.clickable-row {
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    
+    tr.clickable-row:hover {
+        background: #1a1e24;
+    }
+    
+    .btn-small {
+        display: inline-block;
+        padding: 4px 12px;
+        background: transparent;
+        border: 1px solid #3b82f6;
+        color: #3b82f6;
+        border-radius: 20px;
+        font-size: 12px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .btn-small:hover {
+        background: #3b82f6;
+        color: white;
+    }
+    
+    /* Status Badges */
+    .status-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .status-scheduled {
+        background: rgba(245, 158, 11, 0.15);
+        color: #fbbf24;
+    }
+    
+    .status-confirmed {
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+    }
+    
+    .status-completed {
+        background: rgba(59, 130, 246, 0.15);
+        color: #60a5fa;
+    }
+    
+    .status-cancelled {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+    }
+    
+    .status-no_show {
+        background: rgba(139, 92, 246, 0.15);
+        color: #c084fc;
+    }
+    
+    /* System Overview */
+    .system-overview {
+        background: #111417;
+        border: 1px solid #2a2f35;
+        border-radius: 16px;
+        padding: 20px;
+        margin-top: 20px;
+    }
+    
+    .system-overview h2 {
+        font-size: 20px;
+        margin-bottom: 20px;
+        color: #e5e7eb;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+    }
+    
+    .stat-card {
+        background: #1a1e24;
+        border-radius: 12px;
+        padding: 20px;
+    }
+    
+    .stat-card h4 {
+        font-size: 16px;
+        color: #9ca3af;
+        margin-bottom: 15px;
+    }
+    
+    /* Progress Bars */
+    .progress-bars {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .progress-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .progress-item .label {
+        width: 100px;
+        font-size: 14px;
+        color: #e5e7eb;
+    }
+    
+    .progress-bar {
+        flex: 1;
+        height: 8px;
+        background: #2a2f35;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+    
+    .progress-item .value {
+        width: 40px;
+        font-size: 14px;
+        color: #e5e7eb;
+        text-align: right;
+    }
+    
+    /* Stats List */
+    .stats-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #2a2f35;
+    }
+    
+    .stat-row:last-child {
+        border-bottom: none;
+    }
+    
+    .stat-row .label {
+        color: #9ca3af;
+        font-size: 14px;
+    }
+    
+    .stat-row .value {
+        font-weight: 600;
+    }
+    
+    .stat-row .value.scheduled { color: #fbbf24; }
+    .stat-row .value.confirmed { color: #34d399; }
+    .stat-row .value.completed { color: #60a5fa; }
+    .stat-row .value.cancelled { color: #f87171; }
+    
+    /* Pending Items */
+    .pending-items {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .pending-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .badge {
+        padding: 4px 8px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .badge.warning {
+        background: rgba(245, 158, 11, 0.15);
+        color: #fbbf24;
+    }
+    
+    .badge.success {
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+    }
+    
+    .badge.danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+    }
+    
+    /* Empty Message */
+    .empty-message {
+        text-align: center;
+        padding: 40px;
+        color: #6b7280;
+        border: 2px dashed #2a2f35;
+        border-radius: 8px;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .quick-actions {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .progress-item .label {
+            width: 80px;
+            font-size: 12px;
+        }
+    }
+</style>
+{% endblock %}

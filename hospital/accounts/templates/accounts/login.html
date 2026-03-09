@@ -1,0 +1,149 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<div class="login-container">
+    <h1>Welcome Back</h1>
+    
+    <form method="post" class="login-form">
+        {% csrf_token %}
+        
+        <div class="form-group floating-label-group">
+            <input type="text" name="username" id="username" required placeholder=" ">
+            <label for="username" class="floating-label">Username</label>
+        </div>
+        
+        <div class="form-group floating-label-group">
+            <input type="password" name="password" id="password" required placeholder=" ">
+            <label for="password" class="floating-label">Password</label>
+        </div>
+        
+        <button type="submit" class="btn btn-login">Login</button>
+    </form>
+    
+    <p class="register-link">
+        Don't have an account? <a href="{% url 'register' %}">Register here</a>
+    </p>
+</div>
+
+<style>
+    .login-container {
+        max-width: 400px;
+        margin: 50px auto;
+        padding: 40px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 20px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        
+    }
+
+    h1 {
+        text-align: center;
+        margin-bottom: 30px;
+        font-weight: 500;
+        font-size: 2rem;
+        color: #fff;
+    }
+
+    .login-form {
+        display: flex;
+        flex-direction: column;
+        gap: 25px;
+    }
+
+    .form-group {
+        position: relative;
+        margin-bottom: 5px;
+    }
+
+    .floating-label-group {
+        position: relative;
+    }
+
+    .floating-label-group input {
+        width: 100%;
+        height: 60px;
+        padding: 20px 15px 5px 15px;
+        font-size: 16px;
+        color: #fff;
+        background: transparent;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        outline: none;
+        transition: all 0.3s ease;
+        box-shadow: 0 0 0 rgba(255, 255, 255, 0);
+    }
+
+    .floating-label-group input:focus {
+        border-color: rgba(255, 255, 255, 0.5);
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+    }
+
+    .floating-label-group label {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 16px;
+        color: rgba(255, 255, 255, 0.7);
+        pointer-events: none;
+        transition: all 0.3s ease;
+        background: transparent;
+        padding: 0 5px;
+    }
+
+    /* Floating label effect */
+    .floating-label-group input:focus + label,
+    .floating-label-group input:not(:placeholder-shown) + label {
+        top: 20%;
+        transform: translateY(0);
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.9);
+        background: transparent;
+    }
+
+    .btn-login {
+        width: 100%;
+        height: 50px;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 10px;
+        box-shadow: 0 0 0 rgba(102, 126, 234, 0);
+    }
+
+    .btn-login:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0 30px rgba(102, 126, 234, 0.4);
+        background: linear-gradient(45deg, #764ba2, #667eea);
+    }
+
+    .register-link {
+        text-align: center;
+        margin-top: 30px;
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .register-link a {
+        color: #667eea;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .register-link a:hover {
+        color: #764ba2;
+        text-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
+    }
+
+    /* Glowing shadow effect for the whole form on focus */
+    .login-container:focus-within {
+        box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,210 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<h1>Invoice Details</h1>
+<p>Invoice Number: <strong>{{ invoice.invoice_number }}</strong></p>
+
+<!-- Status Bar -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        Status: 
+        <span style="
+            padding: 5px 15px;
+            border: 2px solid 
+                {% if invoice.status == 'paid' %}#00C851
+                {% elif invoice.status == 'pending' %}#FFA500
+                {% elif invoice.status == 'overdue' %}#ff4444
+                {% elif invoice.status == 'cancelled' %}#aa66cc
+                {% endif %};
+            color: 
+                {% if invoice.status == 'paid' %}#00C851
+                {% elif invoice.status == 'pending' %}#FFA500
+                {% elif invoice.status == 'overdue' %}#ff4444
+                {% elif invoice.status == 'cancelled' %}#aa66cc
+                {% endif %};
+            border-radius: 5px;
+        ">
+            {{ invoice.get_status_display }}
+        </span>
+    </div>
+    
+    <div>
+        <strong>Payment Progress:</strong> {{ invoice.payment_progress }}%
+        <progress value="{{ invoice.payment_progress }}" max="100" style="width: 200px; height: 20px;"></progress>
+    </div>
+</div>
+
+<!-- Invoice Information -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+    <!-- Patient Info -->
+    <div style="border: 2px solid white; padding: 20px;">
+        <h3>Patient Information</h3>
+        <p><strong>Name:</strong> {{ invoice.patient.user_profile.user.get_full_name }}</p>
+        <p><strong>Patient ID:</strong> {{ invoice.patient.patient_id }}</p>
+        <p><strong>Phone:</strong> {{ invoice.patient.user_profile.phone_number|default:"—" }}</p>
+        <p><strong>Email:</strong> {{ invoice.patient.user_profile.user.email }}</p>
+    </div>
+    
+    <!-- Invoice Info -->
+    <div style="border: 2px solid white; padding: 20px;">
+        <h3>Invoice Information</h3>
+        <p><strong>Issue Date:</strong> {{ invoice.issue_date|date:"F j, Y" }}</p>
+        <p><strong>Due Date:</strong> {{ invoice.due_date|date:"F j, Y" }}</p>
+        {% if invoice.appointment %}
+            <p><strong>Appointment:</strong> {{ invoice.appointment.appointment_date }} at {{ invoice.appointment.start_time|time:"g:i A" }}</p>
+            <p><strong>Doctor:</strong> Dr. {{ invoice.appointment.doctor.user_profile.user.get_full_name }}</p>
+        {% endif %}
+        <p><strong>Created By:</strong> {{ invoice.created_by.get_full_name|default:invoice.created_by.username }}</p>
+    </div>
+</div>
+
+<!-- Invoice Items -->
+<div style="border: 2px solid white; padding: 20px; margin-bottom: 30px;">
+    <h3>Invoice Items</h3>
+    
+    {% if invoice.items.all %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Quantity</th>
+                    <th>Unit Price (KES)</th>
+                    <th>Total (KES)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in invoice.items.all %}
+                <tr>
+                    <td>{{ item.description }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.unit_price|floatformat:2 }}</td>
+                    <td>{{ item.total|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" style="text-align: right;"><strong>Subtotal:</strong></td>
+                    <td>KES {{ invoice.subtotal|floatformat:2 }}</td>
+                </tr>
+                {% if invoice.tax > 0 %}
+                <tr>
+                    <td colspan="3" style="text-align: right;"><strong>Tax:</strong></td>
+                    <td>KES {{ invoice.tax|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+                {% if invoice.discount > 0 %}
+                <tr>
+                    <td colspan="3" style="text-align: right;"><strong>Discount:</strong></td>
+                    <td>-KES {{ invoice.discount|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <td colspan="3" style="text-align: right;"><strong>Total:</strong></td>
+                    <td><strong>KES {{ invoice.total_amount|floatformat:2 }}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+    {% else %}
+        <p>No items on this invoice.</p>
+    {% endif %}
+</div>
+
+<!-- Payments -->
+<div style="border: 2px solid white; padding: 20px; margin-bottom: 30px;">
+    <h3>Payments</h3>
+    
+    {% if payments %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Payment #</th>
+                    <th>Date</th>
+                    <th>Method</th>
+                    <th>Reference</th>
+                    <th>Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for payment in payments %}
+                <tr>
+                    <td>{{ payment.payment_number }}</td>
+                    <td>{{ payment.payment_date|date:"M j, Y H:i" }}</td>
+                    <td>{{ payment.get_payment_method_display }}</td>
+                    <td>{{ payment.reference|default:"—" }}</td>
+                    <td>KES {{ payment.amount|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="4" style="text-align: right;"><strong>Total Paid:</strong></td>
+                    <td><strong>KES {{ invoice.amount_paid|floatformat:2 }}</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="4" style="text-align: right;"><strong>Balance:</strong></td>
+                    <td><strong>KES {{ invoice.balance|floatformat:2 }}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+    {% else %}
+        <p>No payments recorded yet.</p>
+    {% endif %}
+</div>
+
+<!-- M-Pesa Transactions -->
+{% if transactions %}
+<div style="border: 2px solid white; padding: 20px; margin-bottom: 30px;">
+    <h3>M-Pesa Transactions</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Checkout ID</th>
+                <th>Phone</th>
+                <th>Amount</th>
+                <th>Receipt</th>
+                <th>Status</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tx in transactions %}
+            <tr>
+                <td>{{ tx.checkout_request_id|truncatechars:15 }}</td>
+                <td>{{ tx.phone_number }}</td>
+                <td>KES {{ tx.amount|floatformat:2 }}</td>
+                <td>{{ tx.transaction_id|default:"—" }}</td>
+                <td>
+                    <span style="color: 
+                        {% if tx.status == 'completed' %}#00C851
+                        {% elif tx.status == 'pending' %}#FFA500
+                        {% elif tx.status == 'failed' %}#ff4444
+                        {% endif %};">
+                        {{ tx.get_status_display }}
+                    </span>
+                </td>
+                <td>{{ tx.created_at|date:"M j, Y H:i" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Actions -->
+<div style="margin-top: 30px; display: flex; gap: 10px; justify-content: center;">
+    {% if invoice.balance > 0 %}
+        {% if user.profile.user_type == 'patient' %}
+            <a href="{% url 'initiate_payment' invoice.id %}" class="btn" style="padding: 15px 30px;">💳 Pay Now via M-Pesa</a>
+        {% endif %}
+    {% endif %}
+    
+    <button onclick="window.print()" class="btn" style="padding: 15px 30px;">🖨️ Print Invoice</button>
+    
+    {% if user.profile.user_type != 'patient' %}
+        <a href="{% url 'invoice_list' %}" class="btn" style="padding: 15px 30px;">← Back to Invoices</a>
+    {% else %}
+        <a href="{% url 'my_prescriptions' %}" class="btn" style="padding: 15px 30px;">← Back to Dashboard</a>
+    {% endif %}
+</div>
+{% endblock %}

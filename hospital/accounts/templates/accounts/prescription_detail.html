@@ -1,0 +1,173 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<h1>Prescription Details</h1>
+<p>Prescription ID: <strong>{{ prescription.prescription_id }}</strong></p>
+
+<!-- Status Bar -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        Status: 
+        <span style="
+            padding: 5px 15px;
+            border: 2px solid 
+                {% if prescription.status == 'active' %}#00C851
+                {% elif prescription.status == 'completed' %}#33b5e5
+                {% elif prescription.status == 'discontinued' %}#ff4444
+                {% elif prescription.status == 'expired' %}#aa66cc
+                {% endif %};
+            color: 
+                {% if prescription.status == 'active' %}#00C851
+                {% elif prescription.status == 'completed' %}#33b5e5
+                {% elif prescription.status == 'discontinued' %}#ff4444
+                {% elif prescription.status == 'expired' %}#aa66cc
+                {% endif %};
+            border-radius: 5px;
+        ">
+            {{ prescription.get_status_display }}
+        </span>
+    </div>
+    
+    {% if user.profile.user_type == 'doctor' %}
+    <div>
+        <form method="post" action="{% url 'update_prescription_status' prescription.id %}" style="display: inline;">
+            {% csrf_token %}
+            <select name="status" onchange="this.form.submit()" style="padding: 5px; background: black; color: white; border: 2px solid white;">
+                <option value="">Update Status</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="discontinued">Discontinued</option>
+                <option value="expired">Expired</option>
+            </select>
+        </form>
+        <a href="{% url 'record_prescription_fill' prescription.id %}" class="btn">Record Fill</a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Prescription Information -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+    <!-- Patient Info -->
+    <div style="border: 2px solid white; padding: 20px;">
+        <h3>Patient Information</h3>
+        <p><strong>Name:</strong> {{ prescription.patient.user_profile.user.get_full_name }}</p>
+        <p><strong>Patient ID:</strong> {{ prescription.patient.patient_id }}</p>
+        <p><strong>Date of Birth:</strong> {{ prescription.patient.user_profile.date_of_birth|default:"Not provided" }}</p>
+        <p><strong>Blood Group:</strong> {{ prescription.patient.blood_group|default:"Not specified" }}</p>
+    </div>
+    
+    <!-- Prescription Info -->
+    <div style="border: 2px solid white; padding: 20px;">
+        <h3>Prescription Information</h3>
+        <p><strong>Doctor:</strong> Dr. {{ prescription.doctor.user_profile.user.get_full_name }}</p>
+        <p><strong>Date Prescribed:</strong> {{ prescription.created_at|date:"F j, Y" }}</p>
+        <p><strong>Valid Until:</strong> {{ prescription.valid_until|default:"Not specified" }}</p>
+        <p><strong>Refills:</strong> {{ prescription.refills_used }} / {{ prescription.refills_allowed }}</p>
+        <p><strong>Emergency:</strong> {% if prescription.is_emergency %}Yes{% else %}No{% endif %}</p>
+    </div>
+</div>
+
+<!-- Diagnosis -->
+<div style="border: 2px solid white; padding: 20px; margin-bottom: 30px;">
+    <h3>Diagnosis</h3>
+    <p>{{ prescription.diagnosis }}</p>
+    
+    {% if prescription.notes %}
+    <h4 style="margin-top: 15px;">Additional Notes</h4>
+    <p>{{ prescription.notes }}</p>
+    {% endif %}
+</div>
+
+<!-- Medications -->
+<div style="border: 2px solid white; padding: 20px; margin-bottom: 30px;">
+    <h3>Prescribed Medications</h3>
+    
+    {% if items %}
+    <table>
+        <thead>
+            <tr>
+                <th>Medication</th>
+                <th>Dosage</th>
+                <th>Frequency</th>
+                <th>Duration</th>
+                <th>Quantity</th>
+                <th>Instructions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>
+                    <strong>
+                        {% if item.medication %}
+                            {{ item.medication.name }}
+                        {% else %}
+                            {{ item.medication_name }}
+                        {% endif %}
+                    </strong>
+                </td>
+                <td>{{ item.dosage }} ({{ item.get_dosage_form_display }})</td>
+                <td>
+                    {% if item.frequency == 'OTHER' %}
+                        {{ item.custom_frequency }}
+                    {% else %}
+                        {{ item.get_frequency_display }}
+                    {% endif %}
+                </td>
+                <td>{{ item.duration }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>{{ item.instructions|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No medications listed.</p>
+    {% endif %}
+</div>
+
+<!-- Fill History -->
+<div style="border: 2px solid white; padding: 20px;">
+    <h3>Fill History</h3>
+    
+    {% if fills %}
+    <table>
+        <thead>
+            <tr>
+                <th>Date Filled</th>
+                <th>Quantity</th>
+                <th>Pharmacy</th>
+                <th>Phone</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fill in fills %}
+            <tr>
+                <td>{{ fill.filled_date|date:"F j, Y" }}</td>
+                <td>{{ fill.quantity }}</td>
+                <td>{{ fill.pharmacy_name|default:"—" }}</td>
+                <td>{{ fill.pharmacy_phone|default:"—" }}</td>
+                <td>{{ fill.notes|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No fills recorded yet.</p>
+    {% endif %}
+</div>
+
+<!-- Actions -->
+<div style="margin-top: 30px; text-align: center;">
+    {% if user.profile.user_type == 'doctor' %}
+        <a href="{% url 'doctor_prescriptions' %}" class="btn">Back to Prescriptions</a>
+    {% elif user.profile.user_type == 'patient' %}
+        <a href="{% url 'my_prescriptions' %}" class="btn">Back to My Prescriptions</a>
+    {% else %}
+        <a href="{% url 'dashboard' %}" class="btn">Back to Dashboard</a>
+    {% endif %}
+    
+    <button onclick="window.print()" class="btn" style="margin-left: 10px;">Print Prescription</button>
+</div>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<h1>Invoices</h1>
+
+<!-- Filters -->
+<div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+    <a href="?status=all" class="btn {% if not current_status or current_status == 'all' %}active{% endif %}">All</a>
+    <a href="?status=pending" class="btn {% if current_status == 'pending' %}active{% endif %}">Pending</a>
+    <a href="?status=paid" class="btn {% if current_status == 'paid' %}active{% endif %}">Paid</a>
+    <a href="?status=overdue" class="btn {% if current_status == 'overdue' %}active{% endif %}">Overdue</a>
+    
+    {% if user_type != 'patient' %}
+        <a href="{% url 'create_invoice' %}" class="btn" style="margin-left: auto;">+ Create Invoice</a>
+    {% endif %}
+</div>
+
+{% if invoices %}
+    <table>
+        <thead>
+            <tr>
+                <th>Invoice #</th>
+                <th>Date</th>
+                <th>Patient</th>
+                <th>Due Date</th>
+                <th>Amount</th>
+                <th>Paid</th>
+                <th>Balance</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for invoice in invoices %}
+            <tr>
+                <td><strong>{{ invoice.invoice_number }}</strong></td>
+                <td>{{ invoice.issue_date|date:"M j, Y" }}</td>
+                <td>{{ invoice.patient.user_profile.user.get_full_name }}</td>
+                <td>
+                    {{ invoice.due_date|date:"M j, Y" }}
+                    {% if invoice.status == 'pending' and invoice.due_date < today %}
+                        <span style="color: #ff4444;">(Overdue)</span>
+                    {% endif %}
+                </td>
+                <td>KES {{ invoice.total_amount|floatformat:2 }}</td>
+                <td>KES {{ invoice.amount_paid|floatformat:2 }}</td>
+                <td>
+                    <strong>KES {{ invoice.balance|floatformat:2 }}</strong>
+                </td>
+                <td>
+                    <span style="color: 
+                        {% if invoice.status == 'paid' %}#00C851
+                        {% elif invoice.status == 'pending' %}#FFA500
+                        {% elif invoice.status == 'overdue' %}#ff4444
+                        {% elif invoice.status == 'cancelled' %}#aa66cc
+                        {% endif %};">
+                        {{ invoice.get_status_display }}
+                    </span>
+                </td>
+                <td>
+                    <a href="{% url 'invoice_detail' invoice.id %}" class="btn" style="padding: 5px 10px;">View</a>
+                    {% if invoice.balance > 0 and user_type == 'patient' %}
+                        <a href="{% url 'initiate_payment' invoice.id %}" class="btn" style="padding: 5px 10px;">Pay Now</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <!-- Summary -->
+    <div style="margin-top: 30px; border: 2px solid white; padding: 20px;">
+        <h3>Summary</h3>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+            <div>
+                <strong>Total Invoiced:</strong><br>
+                KES {{ invoices.aggregate.total|floatformat:2|default:"0.00" }}
+            </div>
+            <div>
+                <strong>Total Paid:</strong><br>
+                KES {{ invoices.aggregate.paid|floatformat:2|default:"0.00" }}
+            </div>
+            <div>
+                <strong>Outstanding:</strong><br>
+                KES {{ invoices.aggregate.balance|floatformat:2|default:"0.00" }}
+            </div>
+            <div>
+                <strong>Overdue:</strong><br>
+                KES {{ overdue_total|floatformat:2|default:"0.00" }}
+            </div>
+        </div>
+    </div>
+{% else %}
+    <p style="text-align: center; padding: 50px;">No invoices found.</p>
+{% endif %}
+{% endblock %}

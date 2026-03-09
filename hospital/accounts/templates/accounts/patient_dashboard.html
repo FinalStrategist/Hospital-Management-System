@@ -1,0 +1,267 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<h1>Patient Dashboard</h1>
+<p>Welcome, {{ user.get_full_name|default:user.username }}</p>
+
+<!-- Patient Information Card -->
+<div style="border: 2px solid white; padding: 20px; margin-bottom: 30px;">
+    <div style="display: flex; justify-content: space-between; align-items: start;">
+        <div>
+            <h2>Patient Information</h2>
+            <p><strong>Patient ID:</strong> {{ patient.patient_id }}</p>
+            <p><strong>Email:</strong> {{ user.email }}</p>
+            <p><strong>Phone:</strong> {{ user.profile.phone_number|default:"Not provided" }}</p>
+            <p><strong>Blood Group:</strong> {{ patient.blood_group|default:"Not specified" }}</p>
+            <p><strong>Emergency Contact:</strong> {{ patient.emergency_contact|default:"Not provided" }}</p>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-size: 48px;">👤</div>
+            <a href="#" class="btn" style="margin-top: 10px;">Edit Profile</a>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="dashboard-cards">
+    <div class="card">
+        <h3>Total Appointments</h3>
+        <div class="number">{{ total_appointments }}</div>
+    </div>
+    <div class="card">
+        <h3>Upcoming</h3>
+        <div class="number">{{ upcoming_appointments|length }}</div>
+    </div>
+    <div class="card">
+        <h3>Cancelled</h3>
+        <div class="number">{{ cancelled_appointments }}</div>
+    </div>
+    <div class="card">
+        <h3>Favorite Doctor</h3>
+        <div class="number">
+            {% if favorite_doctors %}
+                Dr. {{ favorite_doctors.0.doctor.user_profile.user.last_name }}
+            {% else %}
+                —
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div style="margin: 30px 0;">
+    <h2>Quick Actions</h2>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a href="{% url 'available_doctors' %}" class="btn">🔍 Find a Doctor</a>
+        <a href="{% url 'book_appointment' %}" class="btn">📅 Book Appointment</a>
+        <a href="{% url 'my_appointments' %}" class="btn">📋 My Appointments</a>
+        <a href="{% url 'my_prescriptions' %}" class="btn">💊 My Prescriptions</a>
+    </div>
+</div>
+
+<!-- Upcoming Appointments -->
+<div style="margin-top: 30px; border: 2px solid white; padding: 20px;">
+    <h3>Upcoming Appointments</h3>
+    {% if upcoming_appointments %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Doctor</th>
+                    <th>Specialization</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for apt in upcoming_appointments %}
+                <tr>
+                    <td>{{ apt.appointment_date|date:"l, M j, Y" }}</td>
+                    <td>{{ apt.start_time|time:"g:i A" }}</td>
+                    <td>Dr. {{ apt.doctor.user_profile.user.get_full_name }}</td>
+                    <td>{{ apt.doctor.specialization }}</td>
+                    <td>
+                        <span style="color: 
+                            {% if apt.status == 'confirmed' %}#00C851
+                            {% else %}#FFA500{% endif %};">
+                            {{ apt.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if apt.can_cancel %}
+                            <a href="{% url 'cancel_appointment' apt.id %}" class="btn btn-danger" style="padding: 5px 10px;">Cancel</a>
+                        {% endif %}
+                        <a href="#" class="btn" style="padding: 5px 10px;">Details</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p style="text-align: center; padding: 40px;">You have no upcoming appointments.</p>
+        <div style="text-align: center;">
+            <a href="{% url 'available_doctors' %}" class="btn">Book Your First Appointment</a>
+        </div>
+    {% endif %}
+</div>
+
+
+<!-- Outstanding Invoices Section -->
+<div style="margin-top: 30px; border: 2px solid white; padding: 20px;">
+    <h3>Outstanding Invoices</h3>
+    
+    {% with patient=user.profile.patient_details %}
+        {% if patient %}
+            {% with unpaid_invoices=patient.invoices.all %}
+                {% if unpaid_invoices %}
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Date</th>
+                                <th>Due Date</th>
+                                <th>Amount</th>
+                                <th>Balance</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invoice in unpaid_invoices %}
+                                {% if invoice.status != 'paid' %}
+                                <tr>
+                                    <td>{{ invoice.invoice_number }}</td>
+                                    <td>{{ invoice.issue_date|date:"M j, Y" }}</td>
+                                    <td>{{ invoice.due_date|date:"M j, Y" }}</td>
+                                    <td>KES {{ invoice.total_amount|floatformat:2 }}</td>
+                                    <td>KES {{ invoice.balance|floatformat:2 }}</td>
+                                    <td>
+                                        <span style="color: 
+                                            {% if invoice.status == 'pending' %}#FFA500
+                                            {% elif invoice.status == 'overdue' %}#ff4444
+                                            {% elif invoice.status == 'partially_paid' %}#33b5e5
+                                            {% endif %};">
+                                            {{ invoice.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'invoice_detail' invoice.id %}" class="btn" style="padding: 5px 10px;">View</a>
+                                        {% if invoice.balance > 0 %}
+                                            <a href="{% url 'initiate_payment' invoice.id %}" class="btn" style="padding: 5px 10px;">Pay</a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    
+                    <!-- Summary -->
+                    {% with total_outstanding=0 %}
+                        {% for invoice in unpaid_invoices %}
+                            {% if invoice.status != 'paid' %}
+                                {% with new_total=total_outstanding|add:invoice.balance %}
+                                    {% with total_outstanding=new_total %}
+                                    {% endwith %}
+                                {% endwith %}
+                            {% endif %}
+                        {% endfor %}
+                    {% endwith %}
+                    
+                    <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+                        <a href="{% url 'invoice_list' %}">View All Invoices →</a>
+                        <strong>Total Outstanding: KES {{ total_outstanding|default:"0.00"|floatformat:2 }}</strong>
+                    </div>
+                {% else %}
+                    <p>No invoices found.</p>
+                {% endif %}
+            {% endwith %}
+        {% else %}
+            <p>Patient details not found.</p>
+        {% endif %}
+    {% endwith %}
+</div>
+
+
+<!-- Two Column Layout for Past Appointments and Favorite Doctors -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px;">
+    <!-- Past Appointments -->
+    <div style="border: 2px solid white; padding: 20px;">
+        <h3>Recent Past Appointments</h3>
+        {% if past_appointments %}
+            <table style="width: 100%;">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Doctor</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for apt in past_appointments %}
+                    <tr>
+                        <td>{{ apt.appointment_date|date:"M j, Y" }}</td>
+                        <td>Dr. {{ apt.doctor.user_profile.user.last_name }}</td>
+                        <td>
+                            <span style="color: 
+                                {% if apt.status == 'completed' %}#33b5e5
+                                {% else %}#ff4444{% endif %};">
+                                {{ apt.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div style="margin-top: 15px;">
+                <a href="{% url 'my_appointments' %}?status=past" style="color: white;">View all past appointments →</a>
+            </div>
+        {% else %}
+            <p>No past appointments.</p>
+        {% endif %}
+    </div>
+    
+    <!-- Favorite Doctors -->
+    <div style="border: 2px solid white; padding: 20px;">
+        <h3>Your Most Visited Doctors</h3>
+        {% if favorite_doctors %}
+            {% for fav in favorite_doctors %}
+            <div style="border-bottom: 1px solid white; padding: 10px 0;">
+                <strong>Dr. {{ fav.doctor.user_profile.user.get_full_name }}</strong>
+                <span style="float: right;">{{ fav.visit_count }} visit{{ fav.visit_count|pluralize }}</span>
+                <br>
+                <small>{{ fav.doctor.specialization }}</small>
+            </div>
+            {% endfor %}
+            <div style="margin-top: 15px;">
+                <a href="{% url 'book_appointment' %}" style="color: white;">Book with one of your favorite doctors →</a>
+            </div>
+        {% else %}
+            <p>You haven't visited any doctors yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Health Tips or Information -->
+<div style="margin-top: 30px; border: 2px solid white; padding: 20px; background: #111;">
+    <h3>Health Reminders</h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+        <div>
+            <h4>📋 Upcoming</h4>
+            <p>You have {{ upcoming_appointments|length }} upcoming appointment{{ upcoming_appointments|length|pluralize }}.</p>
+            {% if upcoming_appointments %}
+                <p>Next: {{ upcoming_appointments.0.appointment_date|date:"l" }} at {{ upcoming_appointments.0.start_time|time:"g:i A" }}</p>
+            {% endif %}
+        </div>
+        <div>
+            <h4>💊 Medications</h4>
+            <p>No active prescriptions. (Feature coming soon)</p>
+        </div>
+        <div>
+            <h4>🏥 Check-ups</h4>
+            <p>Regular check-up recommended every 6 months.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

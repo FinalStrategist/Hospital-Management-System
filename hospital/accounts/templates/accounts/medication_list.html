@@ -1,0 +1,964 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Medication Library</h1>
+        <p>Manage and view all medications in the system</p>
+    </div>
+    <div class="header-actions">
+        <a href="{% url 'medication_create' %}" class="btn btn-primary">
+            <span class="btn-icon">+</span> Add New Medication
+        </a>
+    </div>
+</div>
+
+<!-- Search and Filter Bar -->
+<div class="search-section">
+    <form method="get" class="search-form">
+        <div class="search-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" 
+                   name="search" 
+                   id="search" 
+                   class="search-input" 
+                   placeholder="Search by medication name, generic name, or manufacturer..."
+                   value="{{ search|default:'' }}">
+            <button type="submit" class="btn-search">Search</button>
+            {% if search %}
+                <a href="{% url 'medication_list' %}" class="btn-clear">Clear</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Statistics Cards -->
+<div class="stats-cards">
+    <div class="stat-card">
+        <div class="stat-icon">💊</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ medications.count }}</div>
+            <div class="stat-label">Total Medications</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">📋</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ medications_with_prescriptions|default:"0" }}</div>
+            <div class="stat-label">In Use</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">🆕</div>
+        <div class="stat-content">
+            <div class="stat-value">{{ recent_additions|default:"0" }}</div>
+            <div class="stat-label">Added This Month</div>
+        </div>
+    </div>
+</div>
+
+<!-- Medications Grid/Table -->
+{% if medications %}
+    <div class="medications-container">
+        <!-- Table View for larger screens -->
+        <div class="table-responsive">
+            <table class="medications-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Generic Name</th>
+                        <th>Manufacturer</th>
+                        <th>Common Dosages</th>
+                        <th>Prescriptions</th>
+                        <th>Added</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for medication in medications %}
+                    <tr class="medication-row" data-id="{{ medication.id }}">
+                        <td class="medication-name">
+                            <strong>{{ medication.name }}</strong>
+                            {% if medication.is_controlled %}
+                                <span class="badge warning">Controlled</span>
+                            {% endif %}
+                        </td>
+                        <td class="generic-name">{{ medication.generic_name|default:"—" }}</td>
+                        <td class="manufacturer">{{ medication.manufacturer|default:"—" }}</td>
+                        <td class="dosages">{{ medication.common_dosages|default:"—" }}</td>
+                        <td class="prescription-count">
+                            <span class="count-badge">{{ medication.prescriptions.count|default:"0" }}</span>
+                        </td>
+                        <td class="added-date">{{ medication.created_at|date:"M j, Y" }}</td>
+                        <td class="actions">
+                            <button class="btn-icon view-details" onclick="showMedicationDetails({{ medication.id }})" title="View Details">👁️</button>
+                            <a href="{% url 'medication_update' medication.id %}" class="btn-icon" title="Edit">✏️</a>
+                            {% if user.profile.user_type == 'admin' %}
+                            <button class="btn-icon delete" onclick="confirmDelete({{ medication.id }}, '{{ medication.name|escapejs }}')" title="Delete">🗑️</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    
+                    <!-- Hidden details row (expandable) -->
+                    <tr class="details-row" id="details-{{ medication.id }}" style="display: none;">
+                        <td colspan="7">
+                            <div class="medication-details">
+                                <div class="details-grid">
+                                    <div class="details-section">
+                                        <h4>Description</h4>
+                                        <p>{{ medication.description|default:"No description available" }}</p>
+                                    </div>
+                                    <div class="details-section">
+                                        <h4>Side Effects</h4>
+                                        <p>{{ medication.side_effects|default:"No side effects listed" }}</p>
+                                    </div>
+                                    <div class="details-section">
+                                        <h4>Contraindications</h4>
+                                        <p>{{ medication.contraindications|default:"None listed" }}</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Recent prescriptions using this medication -->
+                                {% with recent_rxs=medication.prescriptions.all|slice:":3" %}
+                                    {% if recent_rxs %}
+                                    <div class="recent-prescriptions">
+                                        <h4>Recent Prescriptions</h4>
+                                        <div class="prescription-list">
+                                            {% for item in recent_rxs %}
+                                            <div class="prescription-item">
+                                                <span class="rx-id">#{{ item.prescription.prescription_id }}</span>
+                                                <span class="patient-name">{{ item.prescription.patient.user_profile.user.get_full_name }}</span>
+                                                <span class="rx-date">{{ item.prescription.created_at|date:"M j, Y" }}</span>
+                                                <span class="rx-doctor">Dr. {{ item.prescription.doctor.user_profile.user.last_name }}</span>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Card View for mobile -->
+        <div class="medications-grid mobile-only">
+            {% for medication in medications %}
+            <div class="medication-card">
+                <div class="card-header">
+                    <h3 class="card-title">{{ medication.name }}</h3>
+                    {% if medication.is_controlled %}
+                        <span class="badge warning">Controlled</span>
+                    {% endif %}
+                </div>
+                
+                <div class="card-body">
+                    <div class="card-info">
+                        <span class="info-label">Generic:</span>
+                        <span class="info-value">{{ medication.generic_name|default:"—" }}</span>
+                    </div>
+                    <div class="card-info">
+                        <span class="info-label">Manufacturer:</span>
+                        <span class="info-value">{{ medication.manufacturer|default:"—" }}</span>
+                    </div>
+                    <div class="card-info">
+                        <span class="info-label">Dosages:</span>
+                        <span class="info-value">{{ medication.common_dosages|default:"—" }}</span>
+                    </div>
+                    <div class="card-info">
+                        <span class="info-label">Prescriptions:</span>
+                        <span class="info-value">{{ medication.prescriptions.count }}</span>
+                    </div>
+                </div>
+                
+                <div class="card-actions">
+                    <button class="btn-small" onclick="showMedicationDetails({{ medication.id }})">View</button>
+                    <a href="{% url 'medication_update' medication.id %}" class="btn-small">Edit</a>
+                    {% if user.profile.user_type == 'admin' %}
+                    <button class="btn-small danger" onclick="confirmDelete({{ medication.id }}, '{{ medication.name|escapejs }}')">Delete</button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Pagination -->
+    {% if medications.has_other_pages %}
+    <div class="pagination">
+        {% if medications.has_previous %}
+            <a href="?page=1{% if search %}&search={{ search }}{% endif %}" class="page-link">««</a>
+            <a href="?page={{ medications.previous_page_number }}{% if search %}&search={{ search }}{% endif %}" class="page-link">«</a>
+        {% endif %}
+        
+        <span class="current-page">
+            Page {{ medications.number }} of {{ medications.paginator.num_pages }}
+        </span>
+        
+        {% if medications.has_next %}
+            <a href="?page={{ medications.next_page_number }}{% if search %}&search={{ search }}{% endif %}" class="page-link">»</a>
+            <a href="?page={{ medications.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}" class="page-link">»»</a>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+{% else %}
+    <!-- Empty State -->
+    <div class="empty-state">
+        <div class="empty-icon">💊</div>
+        <h3>No Medications Found</h3>
+        {% if search %}
+            <p>No medications match your search "{{ search }}"</p>
+            <a href="{% url 'medication_list' %}" class="btn btn-secondary">Clear Search</a>
+        {% else %}
+            <p>Get started by adding your first medication to the library</p>
+            <a href="{% url 'medication_create' %}" class="btn btn-primary">Add Medication</a>
+        {% endif %}
+    </div>
+{% endif %}
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirm Delete</h3>
+            <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete <strong id="deleteMedicationName"></strong>?</p>
+            <p class="warning-text">This action cannot be undone. The medication will be removed from the library.</p>
+        </div>
+        <div class="modal-footer">
+            <form id="deleteForm" method="post" action="">
+                {% csrf_token %}
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn btn-danger">Delete Medication</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Page Header */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .page-header h1 {
+        font-size: 28px;
+        color: #e5e7eb;
+        margin-bottom: 5px;
+    }
+    
+    .page-header p {
+        color: #9ca3af;
+        font-size: 16px;
+    }
+    
+    .header-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+    }
+    
+    .btn-secondary {
+        background: #1a1e24;
+        border: 1px solid #2a2f35;
+        color: #e5e7eb;
+        padding: 12px 24px;
+        border-radius: 8px;
+        text-decoration: none;
+        display: inline-block;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        background: #2a2f35;
+    }
+    
+    .btn-danger {
+        background: #ef4444;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-danger:hover {
+        background: #dc2626;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
+    }
+    
+    /* Search Section */
+    .search-section {
+        margin-bottom: 30px;
+    }
+    
+    .search-wrapper {
+        display: flex;
+        align-items: center;
+        background: #1a1e24;
+        border: 1px solid #2a2f35;
+        border-radius: 12px;
+        overflow: hidden;
+        transition: all 0.2s;
+    }
+    
+    .search-wrapper:focus-within {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+    
+    .search-icon {
+        padding: 0 15px;
+        color: #6b7280;
+        font-size: 18px;
+    }
+    
+    .search-input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        padding: 15px 0;
+        color: #e5e7eb;
+        font-size: 16px;
+        outline: none;
+    }
+    
+    .search-input::placeholder {
+        color: #6b7280;
+    }
+    
+    .btn-search {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    
+    .btn-search:hover {
+        background: #2563eb;
+    }
+    
+    .btn-clear {
+        color: #9ca3af;
+        text-decoration: none;
+        padding: 0 15px;
+        font-size: 14px;
+        transition: color 0.2s;
+    }
+    
+    .btn-clear:hover {
+        color: #e5e7eb;
+    }
+    
+    /* Stats Cards */
+    .stats-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-card {
+        background: #111417;
+        border: 1px solid #2a2f35;
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        transition: all 0.3s;
+    }
+    
+    .stat-card:hover {
+        border-color: #3b82f6;
+        transform: translateY(-2px);
+    }
+    
+    .stat-icon {
+        font-size: 32px;
+        background: #1a1e24;
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+    }
+    
+    .stat-content {
+        flex: 1;
+    }
+    
+    .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: #e5e7eb;
+        line-height: 1.2;
+    }
+    
+    .stat-label {
+        color: #9ca3af;
+        font-size: 14px;
+    }
+    
+    /* Table Styles */
+    .table-responsive {
+        overflow-x: auto;
+        border-radius: 16px;
+        border: 1px solid #2a2f35;
+        background: #111417;
+        margin-bottom: 30px;
+    }
+    
+    .medications-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .medications-table th {
+        background: #1a1e24;
+        color: #9ca3af;
+        font-weight: 500;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 16px;
+        text-align: left;
+        border-bottom: 1px solid #2a2f35;
+    }
+    
+    .medications-table td {
+        padding: 16px;
+        color: #e5e7eb;
+        font-size: 14px;
+        border-bottom: 1px solid #2a2f35;
+    }
+    
+    .medications-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .medication-row {
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    
+    .medication-row:hover {
+        background: #1a1e24;
+    }
+    
+    .medication-name strong {
+        color: #e5e7eb;
+        font-size: 15px;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        margin-left: 8px;
+        text-transform: uppercase;
+    }
+    
+    .badge.warning {
+        background: rgba(245, 158, 11, 0.15);
+        color: #fbbf24;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    
+    .count-badge {
+        background: #1a1e24;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #3b82f6;
+    }
+    
+    /* Action Icons */
+    .actions {
+        display: flex;
+        gap: 8px;
+    }
+    
+    .btn-icon {
+        background: transparent;
+        border: 1px solid #2a2f35;
+        color: #9ca3af;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 16px;
+    }
+    
+    .btn-icon:hover {
+        background: #2a2f35;
+        color: #e5e7eb;
+        border-color: #4b5563;
+    }
+    
+    .btn-icon.delete:hover {
+        background: #ef4444;
+        border-color: #ef4444;
+        color: white;
+    }
+    
+    /* Details Row */
+    .details-row td {
+        background: #1a1e24;
+        padding: 20px;
+    }
+    
+    .medication-details {
+        padding: 10px;
+    }
+    
+    .details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .details-section h4 {
+        color: #9ca3af;
+        font-size: 14px;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .details-section p {
+        color: #e5e7eb;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    
+    .recent-prescriptions h4 {
+        color: #9ca3af;
+        font-size: 14px;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+    }
+    
+    .prescription-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .prescription-item {
+        display: flex;
+        gap: 15px;
+        padding: 8px;
+        background: #111417;
+        border-radius: 6px;
+        font-size: 13px;
+    }
+    
+    .rx-id {
+        color: #3b82f6;
+        font-weight: 600;
+        min-width: 100px;
+    }
+    
+    .patient-name {
+        color: #e5e7eb;
+        min-width: 150px;
+    }
+    
+    .rx-date {
+        color: #9ca3af;
+        min-width: 100px;
+    }
+    
+    .rx-doctor {
+        color: #9ca3af;
+    }
+    
+    /* Mobile Card View */
+    .medications-grid {
+        display: none;
+        gap: 20px;
+    }
+    
+    .medication-card {
+        background: #111417;
+        border: 1px solid #2a2f35;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .card-header {
+        padding: 15px;
+        background: #1a1e24;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .card-title {
+        color: #e5e7eb;
+        font-size: 16px;
+        margin: 0;
+    }
+    
+    .card-body {
+        padding: 15px;
+    }
+    
+    .card-info {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #2a2f35;
+    }
+    
+    .card-info:last-child {
+        border-bottom: none;
+    }
+    
+    .info-label {
+        color: #9ca3af;
+        font-size: 13px;
+    }
+    
+    .info-value {
+        color: #e5e7eb;
+        font-size: 13px;
+        font-weight: 500;
+    }
+    
+    .card-actions {
+        padding: 15px;
+        display: flex;
+        gap: 8px;
+        border-top: 1px solid #2a2f35;
+    }
+    
+    .btn-small {
+        background: transparent;
+        border: 1px solid #2a2f35;
+        color: #e5e7eb;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex: 1;
+        text-align: center;
+    }
+    
+    .btn-small:hover {
+        background: #2a2f35;
+    }
+    
+    .btn-small.danger:hover {
+        background: #ef4444;
+        border-color: #ef4444;
+    }
+    
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: #111417;
+        border: 2px dashed #2a2f35;
+        border-radius: 16px;
+    }
+    
+    .empty-icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+    
+    .empty-state h3 {
+        color: #e5e7eb;
+        font-size: 20px;
+        margin-bottom: 10px;
+    }
+    
+    .empty-state p {
+        color: #9ca3af;
+        margin-bottom: 20px;
+    }
+    
+    /* Modal */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    
+    .modal-content {
+        background: #111417;
+        border: 1px solid #2a2f35;
+        border-radius: 16px;
+        width: 90%;
+        max-width: 500px;
+        animation: modalSlideIn 0.3s ease;
+    }
+    
+    @keyframes modalSlideIn {
+        from {
+            transform: translateY(-20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    .modal-header {
+        padding: 20px;
+        border-bottom: 1px solid #2a2f35;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .modal-header h3 {
+        color: #e5e7eb;
+        font-size: 18px;
+        margin: 0;
+    }
+    
+    .modal-close {
+        background: transparent;
+        border: none;
+        color: #9ca3af;
+        font-size: 24px;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+    
+    .modal-close:hover {
+        color: #e5e7eb;
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+    
+    .modal-body p {
+        color: #e5e7eb;
+        margin-bottom: 10px;
+    }
+    
+    .warning-text {
+        color: #ef4444 !important;
+        font-size: 14px;
+    }
+    
+    .modal-footer {
+        padding: 20px;
+        border-top: 1px solid #2a2f35;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    
+    /* Pagination */
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        margin-top: 30px;
+    }
+    
+    .page-link {
+        background: #1a1e24;
+        border: 1px solid #2a2f35;
+        color: #e5e7eb;
+        padding: 8px 12px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+    
+    .page-link:hover {
+        background: #2a2f35;
+        border-color: #4b5563;
+    }
+    
+    .current-page {
+        color: #9ca3af;
+        padding: 8px 12px;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .table-responsive {
+            display: none;
+        }
+        
+        .medications-grid {
+            display: grid;
+        }
+        
+        .search-wrapper {
+            flex-wrap: wrap;
+        }
+        
+        .btn-search {
+            width: 100%;
+        }
+        
+        .btn-clear {
+            width: 100%;
+            text-align: center;
+            padding: 10px;
+            background: #1a1e24;
+        }
+        
+        .stats-cards {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    /* Tablet */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .medications-table {
+            font-size: 13px;
+        }
+        
+        .actions {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<script>
+    // Show medication details
+    function showMedicationDetails(medicationId) {
+        const detailsRow = document.getElementById(`details-${medicationId}`);
+        const medicationRow = document.querySelector(`.medication-row[data-id="${medicationId}"]`);
+        
+        if (detailsRow.style.display === 'none') {
+            detailsRow.style.display = 'table-row';
+            // Scroll to details
+            detailsRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            detailsRow.style.display = 'none';
+        }
+    }
+    
+    // Delete confirmation
+    function confirmDelete(medicationId, medicationName) {
+        const modal = document.getElementById('deleteModal');
+        const deleteForm = document.getElementById('deleteForm');
+        const nameSpan = document.getElementById('deleteMedicationName');
+        
+        nameSpan.textContent = medicationName;
+        deleteForm.action = `/medications/${medicationId}/delete/`; // Adjust URL as needed
+        
+        modal.style.display = 'flex';
+    }
+    
+    function closeModal() {
+        document.getElementById('deleteModal').style.display = 'none';
+    }
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('deleteModal');
+        if (event.target === modal) {
+            modal.style.display = 'none';
+        }
+    }
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeModal();
+        }
+        
+        // Ctrl/Cmd + F for search
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            e.preventDefault();
+            document.getElementById('search').focus();
+        }
+        
+        // Ctrl/Cmd + N for new medication
+        if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+            e.preventDefault();
+            window.location.href = "{% url 'medication_create' %}";
+        }
+    });
+    
+    // Highlight search term
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchTerm = "{{ search|default:'' }}".toLowerCase();
+        if (searchTerm) {
+            const cells = document.querySelectorAll('.medication-name, .generic-name, .manufacturer');
+            cells.forEach(cell => {
+                const text = cell.textContent;
+                const regex = new RegExp(`(${searchTerm})`, 'gi');
+                cell.innerHTML = text.replace(regex, '<mark style="background: #3b82f6; color: white; padding: 2px 4px; border-radius: 4px;">$1</mark>');
+            });
+        }
+    });
+</script>
+{% endblock %}

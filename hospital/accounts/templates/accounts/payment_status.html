@@ -1,0 +1,97 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<h1>Payment Status</h1>
+
+<div style="max-width: 600px; margin: 0 auto; text-align: center;">
+    <div style="border: 2px solid white; padding: 30px;">
+        <!-- Status Icon -->
+        <div style="font-size: 64px; margin-bottom: 20px;">
+            {% if transaction.status == 'completed' %}
+                ✅
+            {% elif transaction.status == 'pending' %}
+                ⏳
+            {% elif transaction.status == 'failed' %}
+                ❌
+            {% else %}
+                ⏳
+            {% endif %}
+        </div>
+        
+        <!-- Status Message -->
+        <h2 style="color: 
+            {% if transaction.status == 'completed' %}#00C851
+            {% elif transaction.status == 'pending' %}#FFA500
+            {% elif transaction.status == 'failed' %}#ff4444
+            {% endif %};">
+            Payment {{ transaction.get_status_display }}
+        </h2>
+        
+        <!-- Transaction Details -->
+        <div style="margin: 30px 0; text-align: left; border: 1px solid #333; padding: 20px;">
+            <h3>Transaction Details</h3>
+            <table style="width: 100%;">
+                <tr>
+                    <td><strong>Checkout ID:</strong></td>
+                    <td>{{ transaction.checkout_request_id }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Phone Number:</strong></td>
+                    <td>{{ transaction.phone_number }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Amount:</strong></td>
+                    <td>KES {{ transaction.amount|floatformat:2 }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Reference:</strong></td>
+                    <td>{{ transaction.account_reference }}</td>
+                </tr>
+                {% if transaction.transaction_id %}
+                <tr>
+                    <td><strong>M-Pesa Receipt:</strong></td>
+                    <td>{{ transaction.transaction_id }}</td>
+                </tr>
+                {% endif %}
+                {% if transaction.result_desc %}
+                <tr>
+                    <td><strong>Message:</strong></td>
+                    <td>{{ transaction.result_desc }}</td>
+                </tr>
+                {% endif %}
+            </table>
+        </div>
+        
+        <!-- Auto-refresh for pending transactions -->
+        {% if transaction.status == 'pending' %}
+        <div style="margin: 20px 0;">
+            <p>Your transaction is being processed. This page will automatically refresh in <span id="countdown">10</span> seconds...</p>
+            <progress value="10" max="10" style="width: 100%; height: 10px;"></progress>
+        </div>
+        
+        <script>
+            let seconds = 10;
+            const countdownEl = document.getElementById('countdown');
+            
+            const interval = setInterval(function() {
+                seconds--;
+                countdownEl.textContent = seconds;
+                
+                if (seconds <= 0) {
+                    clearInterval(interval);
+                    location.reload();
+                }
+            }, 1000);
+        </script>
+        {% endif %}
+        
+        <!-- Action Buttons -->
+        <div style="margin-top: 30px;">
+            {% if transaction.invoice %}
+                <a href="{% url 'invoice_detail' transaction.invoice.id %}" class="btn">View Invoice</a>
+            {% endif %}
+            <a href="{% url 'dashboard' %}" class="btn">Go to Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

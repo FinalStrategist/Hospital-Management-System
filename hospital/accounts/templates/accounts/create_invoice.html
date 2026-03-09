@@ -1,0 +1,632 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Create New Invoice</h1>
+    <p>Generate an invoice for patient services</p>
+</div>
+
+<div class="create-invoice-container">
+    <form method="post" id="invoiceForm" class="invoice-form">
+        {% csrf_token %}
+        
+        <!-- Patient & Appointment Selection -->
+        <div class="form-section">
+            <h2>Patient Information</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="patient">Select Patient <span class="required">*</span></label>
+                    <select name="patient" id="patient" class="form-control" required>
+                        <option value="">-- Choose a patient --</option>
+                        {% for patient in patients %}
+                        <option value="{{ patient.id }}" 
+                                {% if selected_appointment and selected_appointment.patient.id == patient.id %}selected{% endif %}>
+                            {{ patient.user_profile.user.get_full_name }} (ID: {{ patient.patient_id }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="appointment">Related Appointment (Optional)</label>
+                    <select name="appointment" id="appointment" class="form-control">
+                        <option value="">-- No appointment --</option>
+                        {% for appointment in appointments %}
+                        <option value="{{ appointment.id }}" 
+                                data-patient="{{ appointment.patient.id }}"
+                                data-doctor="Dr. {{ appointment.doctor.user_profile.user.get_full_name }}"
+                                data-date="{{ appointment.appointment_date|date:'Y-m-d' }}"
+                                data-time="{{ appointment.start_time|time:'g:i A' }}"
+                                {% if selected_appointment and selected_appointment.id == appointment.id %}selected{% endif %}>
+                            {{ appointment.appointment_date|date:"M j, Y" }} at {{ appointment.start_time|time:"g:i A" }} - 
+                            Dr. {{ appointment.doctor.user_profile.user.last_name }} - 
+                            {{ appointment.patient.user_profile.user.last_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small class="field-help">Select an appointment to auto-fill patient and add consultation fee</small>
+                </div>
+            </div>
+            
+            <!-- Appointment Preview (shown when appointment selected) -->
+            <div id="appointmentPreview" class="preview-card" style="display: none;">
+                <h3>Appointment Details</h3>
+                <div class="preview-grid">
+                    <div class="preview-item">
+                        <span class="preview-label">Doctor:</span>
+                        <span class="preview-value" id="previewDoctor">—</span>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">Date:</span>
+                        <span class="preview-value" id="previewDate">—</span>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">Time:</span>
+                        <span class="preview-value" id="previewTime">—</span>
+                    </div>
+                    <div class="preview-item">
+                        <span class="preview-label">Consultation Fee:</span>
+                        <span class="preview-value">KES 1,500.00</span>
+                    </div>
+                </div>
+                <button type="button" id="addConsultationFee" class="btn-small">+ Add Consultation Fee</button>
+            </div>
+        </div>
+        
+        <!-- Invoice Details -->
+        <div class="form-section">
+            <h2>Invoice Details</h2>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="due_date">Due Date <span class="required">*</span></label>
+                    <input type="date" name="due_date" id="due_date" class="form-control" 
+                           value="{{ today|date:'Y-m-d' }}" min="{{ today|date:'Y-m-d' }}" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes">Notes (Optional)</label>
+                    <textarea name="notes" id="notes" class="form-control" rows="3" 
+                              placeholder="Additional notes or payment instructions"></textarea>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Invoice Items -->
+        <div class="form-section">
+            <div class="section-header">
+                <h2>Invoice Items</h2>
+                <button type="button" id="addItemBtn" class="btn-small">+ Add Item</button>
+            </div>
+            
+            <div id="itemsContainer">
+                <!-- Item template will be inserted here -->
+                <div class="item-row" id="itemTemplate" style="display: none;">
+                    <div class="item-fields">
+                        <div class="form-group">
+                            <label>Description</label>
+                            <input type="text" name="item_description[]" class="form-control item-description" 
+                                   placeholder="e.g., Consultation fee, Lab test, Medication" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Quantity</label>
+                            <input type="number" name="item_quantity[]" class="form-control item-quantity" 
+                                   value="1" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Unit Price (KES)</label>
+                            <input type="number" name="item_price[]" class="form-control item-price" 
+                                   step="0.01" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Total</label>
+                            <input type="text" class="form-control item-total" readonly value="0.00">
+                        </div>
+                        <button type="button" class="remove-item-btn" title="Remove item">×</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Summary -->
+            <div class="invoice-summary">
+                <div class="summary-row">
+                    <span>Subtotal:</span>
+                    <span id="subtotal">KES 0.00</span>
+                </div>
+                <div class="summary-row">
+                    <span>Tax (16% VAT):</span>
+                    <span id="tax">KES 0.00</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total Amount:</span>
+                    <span id="total">KES 0.00</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Form Actions -->
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Create Invoice</button>
+            <a href="{% url 'invoice_list' %}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<style>
+    .page-header {
+        margin-bottom: 30px;
+    }
+    
+    .page-header h1 {
+        font-size: 28px;
+        color: #e5e7eb;
+        margin-bottom: 5px;
+    }
+    
+    .page-header p {
+        color: #9ca3af;
+        font-size: 16px;
+    }
+    
+    .create-invoice-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .form-section {
+        background: #111417;
+        border: 1px solid #2a2f35;
+        border-radius: 16px;
+        padding: 25px;
+        margin-bottom: 25px;
+    }
+    
+    .form-section h2 {
+        font-size: 18px;
+        color: #e5e7eb;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #2a2f35;
+    }
+    
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #9ca3af;
+        font-size: 14px;
+        font-weight: 500;
+    }
+    
+    .required {
+        color: #ef4444;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 12px;
+        background: #1a1e24;
+        border: 1px solid #2a2f35;
+        border-radius: 8px;
+        color: #e5e7eb;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+    
+    .form-control[readonly] {
+        background: #111417;
+        color: #9ca3af;
+        cursor: not-allowed;
+    }
+    
+    select.form-control option {
+        background: #1a1e24;
+        color: #e5e7eb;
+    }
+    
+    .field-help {
+        display: block;
+        margin-top: 5px;
+        color: #6b7280;
+        font-size: 12px;
+    }
+    
+    /* Preview Card */
+    .preview-card {
+        background: #1a1e24;
+        border: 1px solid #3b82f6;
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 20px;
+    }
+    
+    .preview-card h3 {
+        color: #e5e7eb;
+        font-size: 16px;
+        margin-bottom: 15px;
+    }
+    
+    .preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .preview-item {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .preview-label {
+        color: #9ca3af;
+        font-size: 12px;
+        margin-bottom: 4px;
+    }
+    
+    .preview-value {
+        color: #e5e7eb;
+        font-size: 16px;
+        font-weight: 500;
+    }
+    
+    .btn-small {
+        background: transparent;
+        border: 1px solid #3b82f6;
+        color: #3b82f6;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .btn-small:hover {
+        background: #3b82f6;
+        color: white;
+    }
+    
+    /* Items Section */
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .item-row {
+        background: #1a1e24;
+        border: 1px solid #2a2f35;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+        position: relative;
+        transition: all 0.2s;
+    }
+    
+    .item-row:hover {
+        border-color: #4b5563;
+    }
+    
+    .item-fields {
+        display: grid;
+        grid-template-columns: 3fr 1fr 1fr 1fr auto;
+        gap: 15px;
+        align-items: start;
+    }
+    
+    .item-fields .form-group {
+        margin-bottom: 0;
+    }
+    
+    .item-fields .form-group label {
+        font-size: 12px;
+        margin-bottom: 4px;
+    }
+    
+    .remove-item-btn {
+        background: transparent;
+        border: 1px solid #ef4444;
+        color: #ef4444;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        margin-top: 24px;
+    }
+    
+    .remove-item-btn:hover {
+        background: #ef4444;
+        color: white;
+    }
+    
+    /* Summary */
+    .invoice-summary {
+        background: #1a1e24;
+        border: 1px solid #2a2f35;
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 20px;
+        max-width: 400px;
+        margin-left: auto;
+    }
+    
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        color: #9ca3af;
+        font-size: 14px;
+    }
+    
+    .summary-row.total {
+        border-top: 1px solid #2a2f35;
+        margin-top: 8px;
+        padding-top: 15px;
+        color: #e5e7eb;
+        font-size: 18px;
+        font-weight: 600;
+    }
+    
+    .summary-row.total span:last-child {
+        color: #3b82f6;
+    }
+    
+    /* Form Actions */
+    .form-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin-top: 30px;
+    }
+    
+    .btn {
+        padding: 14px 32px;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+    }
+    
+    .btn-secondary {
+        background: #1a1e24;
+        border: 1px solid #2a2f35;
+        color: #e5e7eb;
+    }
+    
+    .btn-secondary:hover {
+        background: #2a2f35;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .item-fields {
+            grid-template-columns: 1fr;
+        }
+        
+        .remove-item-btn {
+            margin-top: 0;
+            width: 100%;
+        }
+        
+        .form-actions {
+            flex-direction: column;
+        }
+        
+        .btn {
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const itemsContainer = document.getElementById('itemsContainer');
+    const template = document.getElementById('itemTemplate');
+    const addItemBtn = document.getElementById('addItemBtn');
+    const appointmentSelect = document.getElementById('appointment');
+    const appointmentPreview = document.getElementById('appointmentPreview');
+    const previewDoctor = document.getElementById('previewDoctor');
+    const previewDate = document.getElementById('previewDate');
+    const previewTime = document.getElementById('previewTime');
+    const patientSelect = document.getElementById('patient');
+    const addConsultationFee = document.getElementById('addConsultationFee');
+    
+    let itemCount = 0;
+    
+    // Add first item by default
+    addItem();
+    
+    // Add item function
+    function addItem() {
+        const newItem = template.cloneNode(true);
+        newItem.style.display = 'block';
+        newItem.id = '';
+        
+        // Clear values
+        newItem.querySelectorAll('input').forEach(input => {
+            if (input.type !== 'button') {
+                input.value = '';
+            }
+        });
+        
+        // Set default quantity to 1
+        newItem.querySelector('.item-quantity').value = 1;
+        
+        // Add event listeners
+        const description = newItem.querySelector('.item-description');
+        const quantity = newItem.querySelector('.item-quantity');
+        const price = newItem.querySelector('.item-price');
+        const total = newItem.querySelector('.item-total');
+        const removeBtn = newItem.querySelector('.remove-item-btn');
+        
+        function calculateItemTotal() {
+            const qty = parseFloat(quantity.value) || 0;
+            const unitPrice = parseFloat(price.value) || 0;
+            const itemTotal = qty * unitPrice;
+            total.value = itemTotal.toFixed(2);
+            calculateTotals();
+        }
+        
+        quantity.addEventListener('input', calculateItemTotal);
+        price.addEventListener('input', calculateItemTotal);
+        
+        removeBtn.addEventListener('click', function() {
+            newItem.remove();
+            calculateTotals();
+        });
+        
+        itemsContainer.appendChild(newItem);
+        itemCount++;
+        calculateTotals();
+    }
+    
+    // Add item button click
+    addItemBtn.addEventListener('click', addItem);
+    
+    // Calculate all totals
+    function calculateTotals() {
+        const items = document.querySelectorAll('.item-row:not(#itemTemplate)');
+        let subtotal = 0;
+        
+        items.forEach(item => {
+            const total = parseFloat(item.querySelector('.item-total').value) || 0;
+            subtotal += total;
+        });
+        
+        const tax = subtotal * 0.16; // 16% VAT
+        const total = subtotal + tax;
+        
+        document.getElementById('subtotal').textContent = `KES ${subtotal.toFixed(2)}`;
+        document.getElementById('tax').textContent = `KES ${tax.toFixed(2)}`;
+        document.getElementById('total').textContent = `KES ${total.toFixed(2)}`;
+    }
+    
+    // Appointment selection preview
+    appointmentSelect.addEventListener('change', function() {
+        const selected = this.options[this.selectedIndex];
+        
+        if (this.value) {
+            const doctor = selected.dataset.doctor || '—';
+            const date = selected.dataset.date || '—';
+            const time = selected.dataset.time || '—';
+            const patientId = selected.dataset.patient;
+            
+            previewDoctor.textContent = doctor;
+            previewDate.textContent = date;
+            previewTime.textContent = time;
+            appointmentPreview.style.display = 'block';
+            
+            // Auto-select patient
+            if (patientId) {
+                patientSelect.value = patientId;
+            }
+        } else {
+            appointmentPreview.style.display = 'none';
+        }
+    });
+    
+    // Trigger change if appointment pre-selected
+    if (appointmentSelect.value) {
+        appointmentSelect.dispatchEvent(new Event('change'));
+    }
+    
+    // Add consultation fee button
+    addConsultationFee.addEventListener('click', function() {
+        // Check if consultation fee already exists
+        const descriptions = document.querySelectorAll('.item-description');
+        let exists = false;
+        
+        descriptions.forEach(desc => {
+            if (desc.value.toLowerCase().includes('consultation')) {
+                exists = true;
+            }
+        });
+        
+        if (!exists) {
+            // Create new item or use existing empty one
+            let newItem = null;
+            const emptyItems = document.querySelectorAll('.item-row:not(#itemTemplate)');
+            
+            for (let item of emptyItems) {
+                const desc = item.querySelector('.item-description');
+                if (!desc.value) {
+                    newItem = item;
+                    break;
+                }
+            }
+            
+            if (!newItem) {
+                addItem();
+                newItem = itemsContainer.lastChild;
+            }
+            
+            newItem.querySelector('.item-description').value = 'Consultation Fee';
+            newItem.querySelector('.item-price').value = '1500';
+            newItem.querySelector('.item-quantity').value = '1';
+            
+            // Trigger calculation
+            newItem.querySelector('.item-price').dispatchEvent(new Event('input'));
+        } else {
+            alert('Consultation fee already added');
+        }
+    });
+    
+    // Form validation
+    document.getElementById('invoiceForm').addEventListener('submit', function(e) {
+        const items = document.querySelectorAll('.item-row:not(#itemTemplate)');
+        let hasItems = false;
+        
+        items.forEach(item => {
+            const desc = item.querySelector('.item-description').value;
+            const qty = item.querySelector('.item-quantity').value;
+            const price = item.querySelector('.item-price').value;
+            
+            if (desc && qty && price) {
+                hasItems = true;
+            }
+        });
+        
+        if (!hasItems) {
+            e.preventDefault();
+            alert('Please add at least one item to the invoice.');
+        }
+    });
+});
+</script>
+{% endblock %}

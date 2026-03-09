@@ -1,0 +1,23 @@
+{% extends 'accounts/base.html' %}
+
+{% block content %}
+<h1>Cancel Appointment</h1>
+
+<div style="border: 2px solid white; padding: 30px; text-align: center; max-width: 500px; margin: 0 auto;">
+    <p style="font-size: 1.2em; margin-bottom: 20px;">
+        Are you sure you want to cancel your appointment with 
+        <strong>Dr. {{ appointment.doctor.user_profile.user.get_full_name }}</strong> 
+        on <strong>{{ appointment.appointment_date }} at {{ appointment.start_time|time:"g:i A" }}</strong>?
+    </p>
+    
+    <p style="color: #ff4444; margin: 20px 0;">
+        This action cannot be undone!
+    </p>
+    
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Yes, Cancel Appointment</button>
+        <a href="{% url 'my_appointments' %}" class="btn" style="margin-left: 10px;">No, Go Back</a>
+    </form>
+</div>
+{% endblock %}
